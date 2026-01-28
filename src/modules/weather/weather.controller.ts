@@ -16,6 +16,8 @@ export class WeatherController {
   getLocation(@Query('location') location: string) {
     return this.weatherService.getLocation(location);
   }
+
+  // http://47.117.245.39:3000/api/weather/days-prediction?location=101020100&days=30d
   @Get('days-prediction')
   getDaysPrediction(
     @Query() query: DaysPredictionQueryDto,
