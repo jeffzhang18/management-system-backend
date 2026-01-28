@@ -13,7 +13,7 @@ export class AppController {
   @Get('ping')
   ping() {
     return {
-      message: 'pong1',
+      message: 'pong',
       time: new Date().toISOString(),
     };
     
