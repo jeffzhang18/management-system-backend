@@ -34,14 +34,14 @@ export class WeatherService {
 
   async getLocation(location: string) {
     try {
-        const url = `https://${this.host}/geo/v2/city/lookup`;
-    const res = await axios.get(url, {
-        params:{location},
-        headers:{
-            'X-QW-Api-Key': this.apiKey
-        }
-    })
-    return res.data
+      const url = `https://${this.host}/geo/v2/city/lookup`;
+      const res = await axios.get(url, {
+          params:{location},
+          headers:{
+              'X-QW-Api-Key': this.apiKey
+          }
+      })
+      return res.data
     } catch (error) {
         throw new HttpException(
           'Failed to fetch weather data',
@@ -49,4 +49,25 @@ export class WeatherService {
         );
       }
   }
+
+  async getDaysPrediction(
+    locationId: string,
+    days: '3d' | '7d' | '10d' | '15d' | '30d',
+  ) {
+    try {
+      const url = `https://${this.host}/v7/weather/${days}`;
+  
+      const res = await axios.get(url, {
+        params: { location: locationId },
+        headers: {
+          'X-QW-Api-Key': this.apiKey,
+        },
+      });
+  
+      return res.data;
+    } catch (error) {
+      throw new HttpException('Failed to fetch weather data', 502);
+    }
+  }
+  
 }
