@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { WeatherService } from './weather.service';
 import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
+import {HoursPredictionQueryDto} from './dto/hours-prediction-query.dto'
 
 
 @Controller('weather')
@@ -24,5 +25,10 @@ export class WeatherController {
   ) {
     return this.weatherService.getDaysPrediction(query.location,
       query.days)
+  }
+
+  @Get('hours-prediction')
+  getHoursPrediction(@Query() query: HoursPredictionQueryDto) {
+    return this.weatherService.getHoursPrediction(query.location, query.hours)
   }
 }
