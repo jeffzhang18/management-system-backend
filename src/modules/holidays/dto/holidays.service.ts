@@ -5,7 +5,7 @@ import axios from 'axios';
 @Injectable()
 export class HolidaysService {
 
-    getCurrentYear():number {
+    private getCurrentYear():number {
         return new Date().getFullYear();
     }
 
@@ -45,6 +45,30 @@ export class HolidaysService {
         }
       );
     }
+
+    private isWorkday(date: Date, holidaySet: Set<string>) {
+      const day = date.getDay(); // 0=Sun, 6=Sat
+      if (day === 0 || day === 6) return false;
+    
+      const dateStr = date.toISOString().slice(0, 10);
+      return !holidaySet.has(dateStr);
+    }
+    
+    private getLastWorkdayOfMonth(
+      year: number,
+      month: number,
+      holidaySet: Set<string>,
+    ) {
+      // month: 0-11
+      let date = new Date(year, month + 1, 0); // 本月最后一天
+    
+      while (!this.isWorkday(date, holidaySet)) {
+        date.setDate(date.getDate() - 1);
+      }
+    
+      return date;
+    }
+    
     
 
     async getRemainingHoliday() {
@@ -143,4 +167,120 @@ export class HolidaysService {
         throw new HttpException('Failed to fetch latest holiday', 502);
       }
     }
+
+    async getLatestWeekend() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+    
+      const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
+    
+      let status: 'ongoing' | 'upcoming';
+      let startDate: Date;
+      let endDate: Date;
+      let daysLeft: number;
+    
+      // ① 今天是周六或周日 → ongoing
+      if (dayOfWeek === 6 || dayOfWeek === 0) {
+        status = 'ongoing';
+    
+        // 本周六
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - ((dayOfWeek + 1) % 7));
+    
+        // 本周日
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
+    
+        // 剩余天数（含今天）
+        daysLeft =
+          Math.floor(
+            (endDate.getTime() - today.getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+      } else {
+        // ② 工作日 → upcoming
+        status = 'upcoming';
+    
+        // 距离下一个周六
+        const daysUntilSaturday = 6 - dayOfWeek;
+    
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() + daysUntilSaturday);
+    
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
+    
+        daysLeft = daysUntilSaturday;
+      }
+    
+      const format = (d: Date) => d.toISOString().slice(0, 10);
+    
+      return {
+        status,
+        name: '周末',
+        startDate: format(startDate),
+        endDate: format(endDate),
+        days: 2,
+        daysLeft,
+      };
+    }
+
+    async getLatestPayday(day?: number) {
+      try {
+        const year = this.getCurrentYear();
+        const url = `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`;
+        const { data } = await axios.get(url);
+    
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+    
+        // ① 构建 public holiday Set
+        const holidaySet = new Set<string>(
+          data.days
+            .filter(d => d.isOffDay)
+            .map(d => d.date),
+        );
+    
+        let payday: Date;
+    
+        // ② 计算发薪日
+        if (day == null) {
+          // 本月最后一个工作日
+          payday = this.getLastWorkdayOfMonth(
+            today.getFullYear(),
+            today.getMonth(),
+            holidaySet,
+          );
+        } else {
+          // 指定 day（当月第 day 天）
+          payday = new Date(today.getFullYear(), today.getMonth(), day);
+        }
+    
+        payday.setHours(0, 0, 0, 0);
+    
+        // ③ 计算 daysLeft
+        const diff =
+          Math.ceil(
+            (payday.getTime() - today.getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+    
+        const daysLeft = Math.max(diff, 0);
+    
+        const format = (d: Date) => d.toISOString().slice(0, 10);
+    
+        return {
+          name: '发薪日',
+          date: format(payday),
+          daysLeft,
+        };
+      } catch (error) {
+        throw new HttpException(
+          'Failed to fetch payday info',
+          502,
+        );
+      }
+    }
+    
+    
 }

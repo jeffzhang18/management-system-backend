@@ -20,11 +20,18 @@ export class HolidaysController {
     }
 
     // 距离周末天数
-    // @Get('latest-weekend')
+    @Get('latest-weekend')
+    getLastestWeekend() {
+        return this.holidaysService.getLatestWeekend()
+    }
 
     // 距离发薪日天数
-    // @Get('latest-payday')
+    @Get('latest-payday')
+    getLatestPayday(@Query('day') day:number) {
+        return this.holidaysService.getLatestPayday(day);
+    }
 
+    
     // 调整发薪日
     // @Put("payday")
 
