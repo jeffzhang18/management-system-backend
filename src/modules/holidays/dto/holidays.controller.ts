@@ -14,7 +14,10 @@ export class HolidaysController {
     }
 
     // 距离最近public holiday距离
-    // @Get('latest-holiday')
+    @Get('latest-holiday')
+    getLatestHoliday() {
+        return this.holidaysService.getLatestHoliday()
+    }
 
     // 距离周末天数
     // @Get('latest-weekend')
