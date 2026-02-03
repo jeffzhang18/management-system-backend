@@ -6,7 +6,7 @@ import axios from 'axios';
 export class HolidaysService {
     async getRemainingHoliday() {
         try {
-            const url = `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/2026.json`
+            const url = `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/2026.json`
             const res = await axios.get(
                 url
             )
