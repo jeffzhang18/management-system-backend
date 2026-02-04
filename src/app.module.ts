@@ -4,6 +4,8 @@ import { WeatherModule } from './modules/weather/weather.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HolidaysModule } from './modules/holidays/dto/holidays.module';
+import { AuthModule } from './modules/auth/auth.module';
+
 
 @Module({
   imports: [
@@ -11,7 +13,8 @@ import { HolidaysModule } from './modules/holidays/dto/holidays.module';
       isGlobal: true,
     }),
     WeatherModule,
-    HolidaysModule
+    HolidaysModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],

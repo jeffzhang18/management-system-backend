@@ -69,8 +69,6 @@ export class HolidaysService {
       return date;
     }
     
-    
-
     async getRemainingHoliday() {
       try {
         const year = this.getCurrentYear();

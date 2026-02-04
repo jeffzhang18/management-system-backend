@@ -1,8 +1,8 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -28,6 +28,9 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
   // 访问地址：http://localhost:3000/docs
   // 实际接口地址前缀：http://localhost:3000/api/xxx
+
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   await app.listen(process.env.PORT ?? 3000);
 }
