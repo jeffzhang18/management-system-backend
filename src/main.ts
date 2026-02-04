@@ -17,10 +17,17 @@ async function bootstrap() {
 
   // ⭐ Swagger 配置
   const config = new DocumentBuilder()
-    .setTitle('AESC Backend API')
-    .setDescription('接口文档（SQL Template / Vector / DataModel）')
+    .setTitle('Management System Backend API')
+    .setDescription('接口文档')
     .setVersion('1.0')
-    // .addBearerAuth() // 如果你有 JWT
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token', // 这个名字后面要用
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
