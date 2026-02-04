@@ -15,11 +15,12 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  @ApiBody({ type: LoginDto })
-  login(@Body() body: LoginDto) {
-    return this.authService
-      .validateUser(body.username, body.password)
-      .then(user => this.authService.login(user));
+  async login(@Body() body: LoginDto) {
+  const user = await this.authService.validateUser(
+    body.email,
+    body.password,
+  );
+    return this.authService.login(user);
   }
 
   @Get('profile')
