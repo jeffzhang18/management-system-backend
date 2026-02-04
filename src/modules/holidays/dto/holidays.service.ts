@@ -243,7 +243,6 @@ export class HolidaysService {
     
         let payday: Date;
     
-        // ② 计算发薪日
         if (day == null) {
           // 本月最后一个工作日
           payday = this.getLastWorkdayOfMonth(
@@ -252,9 +251,39 @@ export class HolidaysService {
             holidaySet,
           );
         } else {
-          // 指定 day（当月第 day 天）
-          payday = new Date(today.getFullYear(), today.getMonth(), day);
+          const todayDate = today.getDate();
+          let year = today.getFullYear();
+          let month = today.getMonth();
+
+          // 1) 如果 day <= 今天日期 → 从下个月开始找
+          if (day < todayDate) {
+            month += 1;
+          }
+
+          // 2) 如果 month 溢出，进位到下一年
+          if (month > 11) {
+            month = 0;
+            year += 1;
+          }
+
+          // 3) 一直往后找，直到某个月“存在 day 号”
+          //    例如 day=31：2月不行 → 3月可以 → 用 3/31
+          while (true) {
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            if (day <= lastDay) {
+              payday = new Date(year, month, day);
+              break;
+            }
+
+            // 下一个月
+            month += 1;
+            if (month > 11) {
+              month = 0;
+              year += 1;
+            }
+          }
         }
+        
     
         payday.setHours(0, 0, 0, 0);
     

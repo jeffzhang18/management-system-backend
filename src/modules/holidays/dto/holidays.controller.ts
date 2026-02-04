@@ -1,5 +1,6 @@
 import { Controller, Get, Put, Query } from '@nestjs/common';
 import { HolidaysService } from './holidays.service';
+import { ApiQuery } from '@nestjs/swagger';
 // import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
 // import {HoursPredictionQueryDto} from './dto/hours-prediction-query.dto'
 
@@ -26,13 +27,15 @@ export class HolidaysController {
     }
 
     // 距离发薪日天数
+    @ApiQuery({
+        name:"day",
+        required:false,
+        type:'Number',
+        description:'指定发薪日（当前月几号），不传默认本月最后一个工作日',
+    })
     @Get('latest-payday')
-    getLatestPayday(@Query('day') day:number) {
+    getLatestPayday(@Query('day') day?:number) {
         return this.holidaysService.getLatestPayday(day);
     }
-
-    
-    // 调整发薪日
-    // @Put("payday")
 
 }
