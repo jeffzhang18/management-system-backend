@@ -296,8 +296,13 @@ export class HolidaysService {
     
         const daysLeft = Math.max(diff, 0);
     
-        const format = (d: Date) => d.toISOString().slice(0, 10);
-    
+        const format = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+        
         return {
           name: '发薪日',
           date: format(payday),
