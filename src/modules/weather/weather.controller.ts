@@ -8,6 +8,7 @@ import {HoursPredictionQueryDto} from './dto/hours-prediction-query.dto'
 export class WeatherController {
   constructor(private readonly weatherService: WeatherService) {}
 
+  
   @Get('now')
   getNow(@Query('location') location: string) {
     return this.weatherService.getNow(location);
