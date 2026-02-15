@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { WeatherModule } from './modules/weather/weather.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { HolidaysModule } from './modules/holidays/dto/holidays.module';
+import { HolidaysModule } from './modules/holidays/holidays.module';
 import { AuthModule } from './modules/auth/auth.module';
 import {UserModule } from './domain/user/user.model'
 import { User } from './domain/user/user.entity';

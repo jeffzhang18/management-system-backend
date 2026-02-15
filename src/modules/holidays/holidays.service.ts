@@ -18,7 +18,7 @@ export class HolidaysService {
         if (!d.isOffDay) return false;
         const dDate = new Date(d.date);
         dDate.setHours(0, 0, 0, 0);
-        return dDate > today;
+        return dDate >= today;
       });
     
       // ② 按节日名分组
