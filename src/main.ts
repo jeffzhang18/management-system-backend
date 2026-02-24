@@ -6,6 +6,11 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
+  console.log('[ENV]', {
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+    DB_NAME: process.env.DB_NAME,
+  });
   const app = await NestFactory.create(AppModule);
 
   // 全局前缀

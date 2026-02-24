@@ -1,13 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+
 import { WeatherModule } from './modules/weather/weather.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { HolidaysModule } from './modules/holidays/holidays.module';
 import { AuthModule } from './modules/auth/auth.module';
-import {UserModule } from './domain/user/user.model'
-import { User } from './domain/user/user.entity';
+import { UserModule } from './domain/user/user.model';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+import { ApiCallLogModule } from './common/logging/api-call-log.module';
+import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interceptor';
+
 
 
 @Module({
@@ -22,15 +28,22 @@ import { User } from './domain/user/user.entity';
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User],
+      autoLoadEntities: true,   // ✅ 关键
       synchronize: true, // ⚠️ 仅开发环境
     }),
     UserModule,
     WeatherModule,
     HolidaysModule,
-    AuthModule
+    AuthModule,
+    ApiCallLogModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ApiCallLogInterceptor
+    }
+  ],
 })
 export class AppModule {}
