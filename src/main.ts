@@ -42,7 +42,6 @@ async function bootstrap() {
   // 实际接口地址前缀：http://localhost:3000/api/xxx
 
   const reflector = app.get(Reflector);
-  app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   await app.listen(process.env.PORT ?? 3000);
 }

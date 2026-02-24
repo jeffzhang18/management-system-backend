@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { WeatherModule } from './modules/weather/weather.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
@@ -13,6 +13,7 @@ import { AppService } from './app.service';
 
 import { ApiCallLogModule } from './common/logging/api-call-log.module';
 import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interceptor';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 
 
@@ -40,6 +41,10 @@ import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interc
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    }, 
     {
       provide: APP_INTERCEPTOR,
       useClass: ApiCallLogInterceptor
