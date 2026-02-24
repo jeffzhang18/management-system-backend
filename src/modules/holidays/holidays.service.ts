@@ -1,4 +1,4 @@
-import { Injectable, HttpException } from '@nestjs/common';
+import { Injectable, HttpException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
@@ -249,6 +249,9 @@ export class HolidaysService {
             holidaySet,
           );
         } else {
+          if (!Number.isInteger(day) || day < 1 || day > 31) {
+            throw new BadRequestException("day must be an integer between 1 and 31")
+          }
           const todayDate = today.getDate();
           let year = today.getFullYear();
           let month = today.getMonth();

@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Query } from '@nestjs/common';
+import { Controller, Get, ParseIntPipe, Put, Query } from '@nestjs/common';
 import { HolidaysService } from './holidays.service';
 import { ApiQuery } from '@nestjs/swagger';
 import {Public} from '../../common/decorators/public.decorator'
@@ -40,7 +40,7 @@ export class HolidaysController {
         description:'指定发薪日（当前月几号），不传默认本月最后一个工作日',
     })
     @Get('latest-payday')
-    getLatestPayday(@Query('day') day?:number) {
+    getLatestPayday(@Query('day', new ParseIntPipe({ optional: true })) day?:number,) {
         return this.holidaysService.getLatestPayday(day);
     }
 
