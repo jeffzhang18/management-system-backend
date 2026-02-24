@@ -16,4 +16,10 @@ export class ApiCallLogEntity {
   @Index()
   @Column({ name: 'call_from_ip', type: 'varchar', length: 64 })
   callFromIp: string;
+
+  @Column({ name: 'user_email', type: 'varchar', nullable: true })
+  userEmail?: string | null;
+
+  @Column({ name: "status", type:"bool", nullable: false})
+  status: boolean | false;
 }

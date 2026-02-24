@@ -15,8 +15,10 @@ import {
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
       console.log('[ApiCallLogInterceptor] HIT');
       
+      
       const http = context.switchToHttp();
       const req = http.getRequest<Request & any>();
+      console.log('req.user =', req.user);
   
       // api_name：建议记录 method + path
       const apiName = `${req.method} ${req.originalUrl || req.url}`;
@@ -30,18 +32,25 @@ import {
         'unknown';
   
       const start = Date.now();
+
+      const userEmail = 
+        req.user?.email ||
+        req.user?.user?.email ||
+        req.body.email ||
+        null;
+
   
       return next.handle().pipe(
         tap({
           next: () => {
             // 这里用“异步写入”，不阻塞响应
-            this.logService.log(apiName, ip).catch((e) => {
+            this.logService.log(apiName, ip, true, userEmail).catch((e) => {
               console.error('[ApiCallLogInterceptor] save failed:', e);
             });
           },
           error: () => {
             // 失败也记录（你也可以加 statusCode 字段）
-            this.logService.log(apiName, ip).catch((e) => {
+            this.logService.log(apiName, ip, false, userEmail).catch((e) => {
               console.error('[ApiCallLogInterceptor] save failed:', e);
             });
           },
