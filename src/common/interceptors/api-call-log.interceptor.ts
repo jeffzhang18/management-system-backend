@@ -7,6 +7,7 @@ import {
   import { Observable } from 'rxjs';
   import { tap } from 'rxjs/operators';
   import { ApiCallLogService } from '../logging/api-call-log.service';
+  import { Request } from 'express';
   
   @Injectable()
   export class ApiCallLogInterceptor implements NestInterceptor {
@@ -36,7 +37,7 @@ import {
       const userEmail = 
         req.user?.email ||
         req.user?.user?.email ||
-        req.body.email ||
+        req.body?.email ||
         null;
 
   

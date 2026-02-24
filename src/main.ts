@@ -11,7 +11,9 @@ async function bootstrap() {
     DB_PORT: process.env.DB_PORT,
     DB_NAME: process.env.DB_NAME,
   });
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
 
   // 全局前缀
   app.setGlobalPrefix('api');
