@@ -1,7 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { WeatherService } from './weather.service';
 import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
-import {HoursPredictionQueryDto} from './dto/hours-prediction-query.dto'
+import { HoursPredictionQueryDto } from './dto/hours-prediction-query.dto'
+import { NowQueryDto } from './dto/now-query.dto';
 import {Public} from '../../common/decorators/public.decorator'
 
 
@@ -11,8 +12,8 @@ export class WeatherController {
 
   @Public()
   @Get('now')
-  getNow(@Query('location') location: string) {
-    return this.weatherService.getNow(location);
+  getNow(@Query() query: NowQueryDto) {
+    return this.weatherService.getNow(query.location);
   }
 
   @Public()
