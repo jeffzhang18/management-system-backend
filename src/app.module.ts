@@ -14,6 +14,7 @@ import { AppService } from './app.service';
 import { ApiCallLogModule } from './common/logging/api-call-log.module';
 import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { WsModule } from './ws/ws.module';
 
 
 
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     HolidaysModule,
     AuthModule,
     ApiCallLogModule,
+    WsModule
   ],
   controllers: [AppController],
   providers: [
