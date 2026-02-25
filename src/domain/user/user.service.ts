@@ -21,7 +21,7 @@ export class UserService {
     return bcrypt.compare(password, user.password);
   }
 
-  async createUser(email: string, password: string) {
+  async createUser(email: string, nickName: string, password: string) {
     const existing = await this.findByEmail(email);
     if (existing) {
       throw new ConflictException('Email already exists');
@@ -31,6 +31,7 @@ export class UserService {
   
     const user = this.userRepository.create({
       email,
+      nick_name: nickName,
       password: hash,
       role: ['user'], // 默认角色
     });
