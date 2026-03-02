@@ -1,5 +1,7 @@
 import { Injectable, HttpException, BadRequestException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import axios from 'axios';
+
 
 type HolidayCnDay = {
   name: string;
@@ -14,7 +16,6 @@ type HolidayCnYear = {
 
 @Injectable()
 export class HolidaysService {
-  private 
 
   private getCurrentYear(): number {
     return new Date().getFullYear();
@@ -168,17 +169,51 @@ export class HolidaysService {
     if (latestHoliday?.status === "upcoming") {
       res["holidayDaysLeft"] = latestHoliday.daysLeft
     }
-
     if (latestWeekend?.status === "upcoming") {
       res['weekendDaysLeft'] = latestWeekend.daysLeft
     }
 
     res["paydayDaysLeft"] = latestPayday.daysLeft
-
     return res
+  }
 
-
-
+  @Cron(CronExpression.MONDAY_TO_FRIDAY_AT_9AM, {
+    timeZone: 'Asia/Shanghai',
+  })
+  async handleDailyHolidayRefresh() {
+    console.log('[Cron] refreshing holidays...');
+  
+    try {
+      const data = await this.getAllHolidays();
+  
+      const text =
+        `📅 假期提醒\n` +
+        `- 距离发薪日：${data?.paydayDaysLeft ?? '-'} 天\n` +
+        `- 距离小长假：${data?.holidayDaysLeft ?? '-'} 天\n` +
+        `- 距离星期六：${data?.weekendDaysLeft ?? '-'} 天`;
+  
+      // 本地打印一份
+      console.log(text);
+  
+      const webhookUrl = process.env.WECHAT_WEBHOOK;
+      if (!webhookUrl) {
+        console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
+        return;
+      }
+  
+      await axios.post(
+        webhookUrl,
+        {
+          msgtype: 'text',
+          text: { content: text },
+        },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+  
+      console.log('[Cron] WeChat push success');
+    } catch (err: any) {
+      console.error('[Cron] WeChat push failed', err?.response?.data || err?.message || err);
+    }
   }
 
 
