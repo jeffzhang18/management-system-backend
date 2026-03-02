@@ -9,7 +9,7 @@ export class User {
   name: string;
 
   @Column({ nullable: true })
-  nick_name: string;
+  user_name: string;
 
   @Column({ type: 'int', nullable: true })
   gender: number;

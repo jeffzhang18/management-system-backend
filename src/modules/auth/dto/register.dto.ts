@@ -7,10 +7,10 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'my_nick_name' })
+  @ApiProperty({ example: 'my_user_name' })
   @IsString()
   @MinLength(1)
-  nickName: string;
+  userName: string;
 
   @ApiProperty({ example: '123456' })
   @IsString()
