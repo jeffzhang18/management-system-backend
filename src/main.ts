@@ -23,17 +23,12 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // ✅ 开启 CORS（开发阶段）
-app.enableCors({
-  origin: [
-    'http://47.117.245.39:3001',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // 如果你后面要带 cookie 就保留；不用 cookie 也可以 true
-  optionsSuccessStatus: 204,
-});
+  app.enableCors({
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
+    credentials: true,
+  });
 
   // ⭐ Swagger 配置
   const config = new DocumentBuilder()
