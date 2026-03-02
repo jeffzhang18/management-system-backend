@@ -1,5 +1,5 @@
 export interface ApiResponse<T = any> {
-    code: number;
+    status: number;
     message: string
     data: T|null
     timestamp: number
