@@ -14,6 +14,8 @@ type HolidayCnYear = {
 
 @Injectable()
 export class HolidaysService {
+  private 
+
   private getCurrentYear(): number {
     return new Date().getFullYear();
   }
@@ -154,6 +156,31 @@ export class HolidaysService {
   }
 
   // ========================= API METHODS =========================
+  async getAllHolidays() {
+    const [latestHoliday, latestWeekend, latestPayday, remainingHoliday] = await Promise.all([
+      this.getLatestHoliday(),
+      this.getLatestWeekend(),
+      this.getLatestPayday(),
+      this.getRemainingHoliday(),
+    ]);
+    let res: Record<string, number> = {};
+
+    if (latestHoliday?.status === "upcoming") {
+      res["holidayDaysLeft"] = latestHoliday.daysLeft
+    }
+
+    if (latestWeekend?.status === "upcoming") {
+      res['weekendDaysLeft'] = latestWeekend.daysLeft
+    }
+
+    res["paydayDaysLeft"] = latestPayday.daysLeft
+
+    return res
+
+
+
+  }
+
 
   async getRemainingHoliday() {
     try {

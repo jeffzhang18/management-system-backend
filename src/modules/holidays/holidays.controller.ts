@@ -10,6 +10,12 @@ import {Public} from '../../common/decorators/public.decorator'
 export class HolidaysController {
     constructor(private readonly holidaysService: HolidaysService){}
 
+    @Public()
+    @Get()
+    getAllHolidays() {
+        return this.holidaysService.getAllHolidays()
+    }
+
     // 本年度剩余public holiday天数
     @Public()
     @Get('remaining-holiday')
