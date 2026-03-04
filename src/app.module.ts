@@ -8,6 +8,7 @@ import { HolidaysModule } from './modules/holidays/holidays.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './domain/user/user.model';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotifierModule } from './modules/notifier/notifier.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -38,6 +39,7 @@ import { WsModule } from './ws/ws.module';
     WeatherModule,
     HolidaysModule,
     AuthModule,
+    NotifierModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),

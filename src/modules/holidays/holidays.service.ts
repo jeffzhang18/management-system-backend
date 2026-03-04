@@ -1,5 +1,6 @@
 import { Injectable, HttpException, BadRequestException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { WeatherService } from '../weather/weather.service'; // 按你的路径改
 import axios from 'axios';
 
 
@@ -158,63 +159,79 @@ export class HolidaysService {
 
   // ========================= API METHODS =========================
   async getAllHolidays() {
-    const [latestHoliday, latestWeekend, latestPayday, remainingHoliday] = await Promise.all([
+    const [latestHoliday, latestWeekend, latestPayday] = await Promise.all([
       this.getLatestHoliday(),
       this.getLatestWeekend(),
       this.getLatestPayday(),
-      this.getRemainingHoliday(),
     ]);
-    let res: Record<string, number> = {};
+    let res: Record<string, any> = {};
+    
 
     if (latestHoliday?.status === "upcoming") {
       res["holidayDaysLeft"] = latestHoliday.daysLeft
+      res['holidayDaysName'] = latestHoliday.name
     }
     if (latestWeekend?.status === "upcoming") {
       res['weekendDaysLeft'] = latestWeekend.daysLeft
     }
 
     res["paydayDaysLeft"] = latestPayday.daysLeft
+    // console.log(res)
     return res
   }
 
-  @Cron(CronExpression.MONDAY_TO_FRIDAY_AT_9AM, {
-    timeZone: 'Asia/Shanghai',
-  })
-  async handleDailyHolidayRefresh() {
-    console.log('[Cron] refreshing holidays...');
+  // @Cron(CronExpression.EVERY_5_SECONDS, {
+  //   timeZone: 'Asia/Shanghai',
+  // })
+  // async handleDailyHolidayRefresh() {
+  //   console.log('[Cron] refreshing holidays...');
   
-    try {
-      const data = await this.getAllHolidays();
+  //   try {
+  //     const data = await this.getAllHolidays();
+  //     if (
+  //       data?.paydayDaysLeft == null ||
+  //       data?.holidayDaysLeft == null ||
+  //       data?.weekendDaysLeft == null
+  //     ) {
+  //       console.log('[Cron] Missing data field, skip sending');
+  //       return;
+  //     }
+
+  //     const now = new Date(
+  //       new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })
+  //     );
+  //     const weekday = ['日','一','二','三','四','五','六'][now.getDay()];
+
+  //     const text =
+  //       `今天是${now.getMonth()+1}月${now.getDate()}日 星期${weekday}\n`+
+  //       `日期提醒\n` + 
+  //       `- 距离发薪日：${data?.paydayDaysLeft} 天\n` +
+  //       `- 距离${data?.holidayDaysName}：${data?.holidayDaysLeft} 天\n` +
+  //       `- 距离星期六：${data?.weekendDaysLeft} 天`;
   
-      const text =
-        `📅 假期提醒\n` +
-        `- 距离发薪日：${data?.paydayDaysLeft ?? '-'} 天\n` +
-        `- 距离小长假：${data?.holidayDaysLeft ?? '-'} 天\n` +
-        `- 距离星期六：${data?.weekendDaysLeft ?? '-'} 天`;
+  //     // 本地打印一份
+  //     console.log(text);
   
-      // 本地打印一份
-      console.log(text);
+  //     // const webhookUrl = process.env.WECHAT_WEBHOOK;
+  //     // if (!webhookUrl) {
+  //     //   console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
+  //     //   return;
+  //     // }
   
-      const webhookUrl = process.env.WECHAT_WEBHOOK;
-      if (!webhookUrl) {
-        console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
-        return;
-      }
+  //     // await axios.post(
+  //     //   webhookUrl,
+  //     //   {
+  //     //     msgtype: 'text',
+  //     //     text: { content: text },
+  //     //   },
+  //     //   { headers: { 'Content-Type': 'application/json' } },
+  //     // );
   
-      await axios.post(
-        webhookUrl,
-        {
-          msgtype: 'text',
-          text: { content: text },
-        },
-        { headers: { 'Content-Type': 'application/json' } },
-      );
-  
-      console.log('[Cron] WeChat push success');
-    } catch (err: any) {
-      console.error('[Cron] WeChat push failed', err?.response?.data || err?.message || err);
-    }
-  }
+  //     // console.log('[Cron] WeChat push success');
+  //   } catch (err: any) {
+  //     console.error('[Cron] WeChat push failed', err?.response?.data || err?.message || err);
+  //   }
+  // }
 
 
   async getRemainingHoliday() {
