@@ -43,7 +43,11 @@ export class NotifierService {
           msgtype: 'text',
           text: { content },
         },
-        { headers: { 'Content-Type': 'application/json' } },
+        { 
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10_000
+        },
+        
       );
   
       console.log('[Notifier] WeChat push success');
@@ -75,10 +79,12 @@ export class NotifierService {
   async handleDailyReminder() {
 
     // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
-    const holidayData = await this.holidaysService.getAllHolidays();
-    if (holidayData.holidayDaysLeft == null || holidayData.weekendDaysLeft == null) {
-        return;
+    const isOffDay = await this.holidaysService.isTodayOffDay();
+    if (isOffDay) {
+      console.log('[Notifier] today is off day, skip reminder');
+      return;
     }
+    const holidayData = await this.holidaysService.getAllHolidays();
 
     // 2) 强制用东八区
     const now = new Date(
@@ -160,10 +166,12 @@ export class NotifierService {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyGetOffReminder() {
-        // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
-    const holidayData = await this.holidaysService.getAllHolidays();
-    if (holidayData.holidayDaysLeft == null || holidayData.weekendDaysLeft == null) {
-        return;
+    // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
+    const isOffDay = await this.holidaysService.isTodayOffDay();
+
+    if (isOffDay) {
+      console.log('[Notifier] today is off day, skip reminder');
+      return;
     }
 
     try {

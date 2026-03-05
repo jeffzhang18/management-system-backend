@@ -49,7 +49,17 @@ export class HolidaysService {
     const { data } = await axios.get(url, { timeout: 10000 });
     return data as HolidayCnYear;
   }
+  // 明年文件不存在不要 throw
+  private async fetchHolidayYearSafe(year: number): Promise<HolidayCnYear | null> {
+    try {
+      return await this.fetchHolidayYear(year);
+    } catch (e) {
+      // 例如 404（明年数据还没发布）/ 网络问题
+      return null;
+    }
+  }
 
+  // 
   /**
    * 构建覆盖表：date -> isOffDay（调休覆盖自然周末/工作日）
    * 注意：holiday-cn 的 days 只覆盖“特殊日”，未覆盖的按自然周末/工作日推断
@@ -76,6 +86,19 @@ export class HolidaysService {
   /** 工作日 = 非休息日（用 isOffDay 的反） */
   private isWorkday(date: Date, dayMap: Map<string, HolidayCnDay>): boolean {
     return !this.isOffDay(date, dayMap);
+  }
+  
+  // 判断今天是否是休息日
+  async isTodayOffDay(): Promise<boolean> {
+    const year = this.getCurrentYear();
+    const { days } = await this.fetchHolidayYear(year);
+  
+    const dayMap = this.buildDayMap(days);
+  
+    const today = new Date();
+    today.setHours(0,0,0,0);
+  
+    return this.isOffDay(today, dayMap);
   }
 
   /** 找某月最后一个工作日（调休生效） */
@@ -164,75 +187,22 @@ export class HolidaysService {
       this.getLatestWeekend(),
       this.getLatestPayday(),
     ]);
-    let res: Record<string, any> = {};
-    
-
-    if (latestHoliday?.status === "upcoming") {
-      res["holidayDaysLeft"] = latestHoliday.daysLeft
-      res['holidayDaysName'] = latestHoliday.name
-    }
-    if (latestWeekend?.status === "upcoming") {
-      res['weekendDaysLeft'] = latestWeekend.daysLeft
-    }
-
-    res["paydayDaysLeft"] = latestPayday.daysLeft
-    // console.log(res)
-    return res
+  
+    return {
+      holidayDaysLeft:
+        latestHoliday?.status === 'upcoming' ? latestHoliday.daysLeft : null,
+      holidayDaysName:
+        latestHoliday?.status === 'upcoming' ? latestHoliday.name : null,
+  
+      weekendDaysLeft:
+        latestWeekend?.status === 'upcoming' ? latestWeekend.daysLeft : null,
+  
+      paydayDaysLeft: latestPayday?.daysLeft ?? null,
+  
+      // 可选：把 holiday 状态也带出去，方便前端/日志判断
+      holidayStatus: latestHoliday?.status ?? 'unknown',
+    };
   }
-
-  // @Cron(CronExpression.EVERY_5_SECONDS, {
-  //   timeZone: 'Asia/Shanghai',
-  // })
-  // async handleDailyHolidayRefresh() {
-  //   console.log('[Cron] refreshing holidays...');
-  
-  //   try {
-  //     const data = await this.getAllHolidays();
-  //     if (
-  //       data?.paydayDaysLeft == null ||
-  //       data?.holidayDaysLeft == null ||
-  //       data?.weekendDaysLeft == null
-  //     ) {
-  //       console.log('[Cron] Missing data field, skip sending');
-  //       return;
-  //     }
-
-  //     const now = new Date(
-  //       new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })
-  //     );
-  //     const weekday = ['日','一','二','三','四','五','六'][now.getDay()];
-
-  //     const text =
-  //       `今天是${now.getMonth()+1}月${now.getDate()}日 星期${weekday}\n`+
-  //       `日期提醒\n` + 
-  //       `- 距离发薪日：${data?.paydayDaysLeft} 天\n` +
-  //       `- 距离${data?.holidayDaysName}：${data?.holidayDaysLeft} 天\n` +
-  //       `- 距离星期六：${data?.weekendDaysLeft} 天`;
-  
-  //     // 本地打印一份
-  //     console.log(text);
-  
-  //     // const webhookUrl = process.env.WECHAT_WEBHOOK;
-  //     // if (!webhookUrl) {
-  //     //   console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
-  //     //   return;
-  //     // }
-  
-  //     // await axios.post(
-  //     //   webhookUrl,
-  //     //   {
-  //     //     msgtype: 'text',
-  //     //     text: { content: text },
-  //     //   },
-  //     //   { headers: { 'Content-Type': 'application/json' } },
-  //     // );
-  
-  //     // console.log('[Cron] WeChat push success');
-  //   } catch (err: any) {
-  //     console.error('[Cron] WeChat push failed', err?.response?.data || err?.message || err);
-  //   }
-  // }
-
 
   async getRemainingHoliday() {
     try {
@@ -257,21 +227,52 @@ export class HolidaysService {
 
   async getLatestHoliday() {
     try {
-      const year = this.getCurrentYear();
-      const { days } = await this.fetchHolidayYear(year);
-
+      const thisYear = this.getCurrentYear();
+  
       const todayStr = this.toYmdLocal(new Date());
       const today = this.parseYmdLocal(todayStr);
-
-      const segments = this.getFutureOffSegments(days, todayStr);
-      if (segments.length === 0) return null;
-
-      // ongoing：今天是否落在某段里（用字符串比较即可）
+  
+      const y1 = await this.fetchHolidayYearSafe(thisYear);
+      const y2 = await this.fetchHolidayYearSafe(thisYear + 1);
+  
+      const daysAll = [
+        ...(y1?.days ?? []),
+        ...(y2?.days ?? []),
+      ];
+  
+      if (daysAll.length === 0) {
+        // 两年都拿不到（网络/源不可用）
+        return {
+          status: 'unknown',
+          name: null,
+          startDate: null,
+          endDate: null,
+          days: null,
+          daysLeft: null,
+          reason: 'holiday_source_unavailable',
+        };
+      }
+  
+      const segments = this.getFutureOffSegments(daysAll, todayStr);
+  
+      if (segments.length === 0) {
+        // 真的没有未来 off 段（很少见，但要兜底）
+        return {
+          status: 'none',
+          name: null,
+          startDate: null,
+          endDate: null,
+          days: null,
+          daysLeft: null,
+        };
+      }
+  
+      // ongoing：今天是否在某段内
       const ongoing = segments.find(s => todayStr >= s.startDate && todayStr <= s.endDate);
       if (ongoing) {
         const end = this.parseYmdLocal(ongoing.endDate);
         const daysLeft = Math.floor((end.getTime() - today.getTime()) / 86400000);
-
+  
         return {
           status: 'ongoing',
           name: ongoing.name,
@@ -281,12 +282,12 @@ export class HolidaysService {
           daysLeft,
         };
       }
-
-      // upcoming：segments 已按日期顺序
+  
+      // upcoming
       const next = segments[0];
       const start = this.parseYmdLocal(next.startDate);
       const daysLeft = Math.ceil((start.getTime() - today.getTime()) / 86400000);
-
+  
       return {
         status: 'upcoming',
         name: next.name,
