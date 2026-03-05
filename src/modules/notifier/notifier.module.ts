@@ -11,4 +11,5 @@ import { NotifierController } from '../notifier/notifier.controller'
     providers: [NotifierService],
     exports: [NotifierService],
 })
+
 export class NotifierModule {}
