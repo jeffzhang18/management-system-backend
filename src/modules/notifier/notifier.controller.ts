@@ -4,7 +4,7 @@ import { ApiQuery } from '@nestjs/swagger';
 import {Public} from '../../common/decorators/public.decorator'
 
 @Controller('notifier')
-export class notifierController {
+export class NotifierController {
 
     constructor(private readonly notifierService: NotifierService){}
 
