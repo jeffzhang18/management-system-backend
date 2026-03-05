@@ -24,9 +24,9 @@ export class NotifierService {
     return '🌤️';
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM, {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron(CronExpression.EVERY_10_SECONDS, {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async handleDailyReminder() {
     // console.log('[Cron] daily reminder');
 
@@ -90,22 +90,24 @@ export class NotifierService {
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
     console.log(text);
+    
 
-    const webhookUrl = process.env.WECHAT_WEBHOOK;
-      if (!webhookUrl) {
-        console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
-        return;
-      }
+    // const webhookUrl = process.env.WECHAT_WEBHOOK;
+    //   if (!webhookUrl) {
+    //     console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
+    //     return;
+    //   }
   
-      await axios.post(
-        webhookUrl,
-        {
-          msgtype: 'text',
-          text: { content: text },
-        },
-        { headers: { 'Content-Type': 'application/json' } },
-      );
+    //   await axios.post(
+    //     webhookUrl,
+    //     {
+    //       msgtype: 'text',
+    //       text: { content: text },
+    //     },
+    //     { headers: { 'Content-Type': 'application/json' } },
+    //   );
   
-      console.log('[Cron] WeChat push success');
+    //   console.log('[Cron] WeChat push success');
+    return text;
   }
 }
