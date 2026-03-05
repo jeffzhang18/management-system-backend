@@ -24,9 +24,9 @@ export class NotifierService {
     return '🌤️';
   }
 
-  @Cron(CronExpression.EVERY_MINUTE, {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron(CronExpression.EVERY_MINUTE, {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async handleDailyReminder() {
     // console.log('[Cron] daily reminder');
 
