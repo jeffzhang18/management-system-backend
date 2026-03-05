@@ -24,11 +24,10 @@ export class NotifierService {
     return '🌤️';
   }
 
-  // @Cron(CronExpression.EVERY_MINUTE, {
-  //   timeZone: 'Asia/Shanghai',
-  // })
+  @Cron(CronExpression.EVERY_DAY_AT_9AM, {
+    timeZone: 'Asia/Shanghai',
+  })
   async handleDailyReminder() {
-    // console.log('[Cron] daily reminder');
 
     // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
     const holidayData = await this.holidaysService.getAllHolidays();
@@ -84,6 +83,7 @@ export class NotifierService {
         });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
     } catch (e) {
+      console.log('[Cron] Weather fetch failed', e)
       weatherText = '- 🌤️ 获取失败';
     }
 
@@ -92,38 +92,36 @@ export class NotifierService {
 
     const paydayText =
       holidayData?.paydayDaysLeft === 0
-        ? '发薪日就是今天！🎉'
-        : `距离发薪日：${holidayData?.paydayDaysLeft ?? '-'} 天`;
+        ? '- 发薪日就是今天！🎉'
+        : `- 距离发薪日：${holidayData?.paydayDaysLeft ?? '-'} 天`;
 
     const text =
       `${dateLine}\n\n` +
       `天气提醒\n` +
       `${weatherText}\n\n` +
       `日期提醒 \n` +
-      `${paydayText}` +
+      `${paydayText}\n` +
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
+    const webhookUrl = process.env.WECHAT_WEBHOOK;
+      if (!webhookUrl) {
+        console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
+        return;
+      }
+  
+      await axios.post(
+        webhookUrl,
+        {
+          msgtype: 'text',
+          text: { content: text },
+        },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+  
+    console.log('[Cron] WeChat push success');
     console.log(now)
     console.log(text);
-    
-
-    // const webhookUrl = process.env.WECHAT_WEBHOOK;
-    //   if (!webhookUrl) {
-    //     console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
-    //     return;
-    //   }
-  
-    //   await axios.post(
-    //     webhookUrl,
-    //     {
-    //       msgtype: 'text',
-    //       text: { content: text },
-    //     },
-    //     { headers: { 'Content-Type': 'application/json' } },
-    //   );
-  
-    //   console.log('[Cron] WeChat push success');
     return text;
   }
 }
