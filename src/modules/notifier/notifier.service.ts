@@ -56,12 +56,16 @@ export class NotifierService {
 
           const forecast = await this.weatherService.getDaysPrediction(locationId, '3d');
           const today = forecast?.daily?.[0];
+          const Tomorrow = forecast?.daily?.[1];
 
           return {
             city: loc?.location?.[0]?.name ?? city,
             weather: today?.textDay,
             tempMin: today?.tempMin,
             tempMax: today?.tempMax,
+            weatherTomorrow: Tomorrow?.textDay,
+            tempMinTomorrow: Tomorrow?.tempMin,
+            tempMaxTomorrow: Tomorrow?.tempMax,
           };
         }),
       );
@@ -69,9 +73,15 @@ export class NotifierService {
       const lines = weatherResults
         .filter((w): w is NonNullable<typeof w> => Boolean(w))
         .map((w) => {
-          const icon = this.iconByWeather(w.weather);
-          return `- ${w.city}：${w.weather ?? '-'}${icon} ${" "}${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C`;        });
-
+          const iconToday = this.iconByWeather(w.weather);
+          const iconTomorrow = this.iconByWeather(w.weatherTomorrow);
+        
+          return (
+            `- ${w.city}\n` +
+            `  今日：${w.weather ?? '-'}${iconToday} ${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
+            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow} ${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
+          );
+        });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
     } catch (e) {
       weatherText = '- 🌤️ 获取失败';
@@ -82,7 +92,7 @@ export class NotifierService {
 
     const text =
       `${dateLine}\n\n` +
-      `今日天气\n` +
+      `天气提醒\n` +
       `${weatherText}\n\n` +
       `日期提醒 \n` +
       `- 距离发薪日：${holidayData?.paydayDaysLeft ?? '-'} 天\n` +
