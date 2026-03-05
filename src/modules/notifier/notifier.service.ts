@@ -1,9 +1,10 @@
+// src/modules/notifier/notifier.service.ts
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { HolidaysService } from '../holidays/holidays.service';
 import { WeatherService } from '../weather/weather.service';
 import axios from 'axios';
-import { time } from 'console';
+import { NORMAL_MESSAGES, FRIDAY_MESSAGES } from './assets/message';
 
 @Injectable()
 export class NotifierService {
@@ -25,6 +26,8 @@ export class NotifierService {
     return '🌤️';
   }
 
+  
+
   private async sendWechatMessage(content: string) {
     const webhookUrl = process.env.WECHAT_WEBHOOK;
   
@@ -45,8 +48,25 @@ export class NotifierService {
   
       console.log('[Notifier] WeChat push success');
     } catch (err) {
-      console.error('[Notifier] WeChat push failed', err);
+      console.error('[Notifier] WeChat push failed:', err?.message);
+      console.error('[Notifier] status/data:', err?.response?.status, err?.response?.data);
     }
+  }
+
+  private pickDailyMessage(date: Date, list: string[]) {
+    // 以 YYYY-MM-DD 作为种子，保证同一天固定选择
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const seedStr = `${y}-${m}-${d}`;
+  
+    // 简单 hash
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+    }
+  
+    return list[hash % list.length];
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM, {
@@ -136,18 +156,30 @@ export class NotifierService {
     return text;
   }
 
-  @Cron(CronExpression.EVERY_5_SECONDS, {
+  @Cron(CronExpression.EVERY_DAY_AT_5PM, {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyGetOffReminder() {
+        // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
+    const holidayData = await this.holidaysService.getAllHolidays();
+    if (holidayData.holidayDaysLeft == null || holidayData.weekendDaysLeft == null) {
+        return;
+    }
+
     try {
       const now = new Date(
         new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
       );
-      console.log(now)
-      // this.sendWechatMessage('123')
-    } catch(e) {
-      console.log(e)
+  
+      const isFriday = now.getDay() === 5; // 0日 1一 ... 5五 6六
+      const pool = isFriday ? FRIDAY_MESSAGES : NORMAL_MESSAGES;
+
+      const content = this.pickDailyMessage(now, pool);
+      console.log(content);
+      
+      await this.sendWechatMessage(content);
+    } catch (e) {
+      console.error('[Cron] GetOff reminder failed', e);
     }
   }
 
