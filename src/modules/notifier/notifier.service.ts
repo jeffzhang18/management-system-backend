@@ -90,12 +90,17 @@ export class NotifierService {
     // 4) 按你想要的格式拼接文本
     const dateLine = `${now.getMonth() + 1}月${now.getDate()}日 星期${weekday}`;
 
+    const paydayText =
+      holidayData?.paydayDaysLeft === 0
+        ? '发薪日就是今天！🎉'
+        : `距离发薪日：${holidayData?.paydayDaysLeft ?? '-'} 天`;
+
     const text =
       `${dateLine}\n\n` +
       `天气提醒\n` +
       `${weatherText}\n\n` +
       `日期提醒 \n` +
-      `- 距离发薪日：${holidayData?.paydayDaysLeft ?? '-'} 天\n` +
+      `${paydayText}` +
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
