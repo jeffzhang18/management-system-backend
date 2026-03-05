@@ -89,6 +89,7 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
+    console.log(now)
     console.log(text);
     
 
