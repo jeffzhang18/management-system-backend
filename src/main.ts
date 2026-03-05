@@ -4,6 +4,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { RequestMethod } from '@nestjs/common';
+
 
 async function bootstrap() {
   console.log('[ENV]', {
@@ -16,7 +18,15 @@ async function bootstrap() {
   });
 
   // 全局前缀
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: '/', method: RequestMethod.GET },
+      { path: 'ping', method: RequestMethod.GET },
+      // 如果你还想让 swagger 不带 /api，也可以排除 docs：
+      { path: 'docs', method: RequestMethod.GET },
+      { path: 'docs/(.*)', method: RequestMethod.GET },
+    ],
+  });
 
   // 全局拦截器 / 过滤器
   app.useGlobalInterceptors(new TransformInterceptor());

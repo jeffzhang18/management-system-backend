@@ -8,8 +8,8 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Public()
-  @Get()
-  getHello(): string {
+  @Get('/')
+  root(): string {
     return this.appService.getHello();
   }
 

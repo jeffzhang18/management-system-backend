@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { HolidaysService } from '../holidays/holidays.service';
 import { WeatherService } from '../weather/weather.service';
 import axios from 'axios';
+import { time } from 'console';
 
 @Injectable()
 export class NotifierService {
@@ -22,6 +23,30 @@ export class NotifierService {
     if (w.includes('晴')) return '☀️';
     if (w.includes('雾') || w.includes('霾') || w.includes('沙') || w.includes('尘')) return '🌫️';
     return '🌤️';
+  }
+
+  private async sendWechatMessage(content: string) {
+    const webhookUrl = process.env.WECHAT_WEBHOOK;
+  
+    if (!webhookUrl) {
+      console.warn('[Notifier] WECHAT_WEBHOOK is empty, skip wechat push');
+      return;
+    }
+  
+    try {
+      await axios.post(
+        webhookUrl,
+        {
+          msgtype: 'text',
+          text: { content },
+        },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+  
+      console.log('[Notifier] WeChat push success');
+    } catch (err) {
+      console.error('[Notifier] WeChat push failed', err);
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM, {
@@ -104,24 +129,28 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
-    const webhookUrl = process.env.WECHAT_WEBHOOK;
-      if (!webhookUrl) {
-        console.warn('[Cron] WECHAT_WEBHOOK is empty, skip wechat push');
-        return;
-      }
+    await this.sendWechatMessage(text)
   
-      await axios.post(
-        webhookUrl,
-        {
-          msgtype: 'text',
-          text: { content: text },
-        },
-        { headers: { 'Content-Type': 'application/json' } },
-      );
-  
-    console.log('[Cron] WeChat push success');
     console.log(now)
     console.log(text);
     return text;
   }
+
+  @Cron(CronExpression.EVERY_5_SECONDS, {
+    timeZone: 'Asia/Shanghai',
+  })
+  async handleDailyGetOffReminder() {
+    try {
+      const now = new Date(
+        new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      );
+      console.log(now)
+      // this.sendWechatMessage('123')
+    } catch(e) {
+      console.log(e)
+    }
+  }
+
+
+
 }
