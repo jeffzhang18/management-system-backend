@@ -14,6 +14,9 @@ export class User {
   @Column({ type: 'int', nullable: true })
   gender: number;
 
+  @Column({nullable:true})
+  avatar: string
+
   @Column({ unique: true })
   email: string;
 

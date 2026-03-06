@@ -25,17 +25,34 @@ export class AuthService {
   }
 
   login(user: User) {
-    const payload = {
+    const accessPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      type: 'access',
     };
+  
+    const refreshPayload = {
+      sub: user.id,
+      type: 'refresh',
+    };
+  
 
     return {
-      id: user.id,
-      email: user.email,
-      username: user.user_name,
-      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.user_name,
+        avatar: user.avatar,
+        role: user.role,
+        premissions:[]
+      },
+      accessToken: this.jwtService.sign(accessPayload, {
+        expiresIn: '1d',
+      }),
+      refreshToken: this.jwtService.sign(refreshPayload, {
+        expiresIn: '7d',
+      }),
     };
   }
 }
