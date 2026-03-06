@@ -128,8 +128,8 @@ export class NotifierService {
         
           return (
             `- ${w.city}\n` +
-            `  今日：${w.weather ?? '-'}${iconToday} ${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
-            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow} ${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
+            `  今日：${w.weather ?? '-'}${iconToday}${" "}${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
+            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow}${" "}${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
           );
         });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
