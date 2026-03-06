@@ -25,12 +25,6 @@ export class NotifierService {
     if (w.includes('雾') || w.includes('霾') || w.includes('沙') || w.includes('尘')) return '🌫️';
     return '🌤️';
   }
-  private pad(str: string | number | undefined, len: number) {
-    const s = String(str ?? '-');
-    return s.padEnd(len, ' ');
-  }
-
-  
 
   private async sendWechatMessage(content: string) {
     const webhookUrl = process.env.WECHAT_WEBHOOK;
@@ -77,7 +71,7 @@ export class NotifierService {
     return list[hash % list.length];
   }
 
-  @Cron('0 54 9 * * *', {
+  @Cron('0 43 9 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
@@ -102,9 +96,6 @@ export class NotifierService {
     console.log('[Cron] start', runId, process.pid);
 
     try {
-      const CITY_WIDTH = 4;     // 城市
-      const WEATHER_WIDTH = 4;  // 天气
-      const TEMP_WIDTH = 8;     // 温度
       const cities = [
         { name: '江阴', id: '101190202' },
         { name: '上海', id: '101020100' },
@@ -130,30 +121,17 @@ export class NotifierService {
       );
 
       const lines = weatherResults
-      .filter((w): w is NonNullable<typeof w> => Boolean(w))
-      .map((w) => {
-        const iconToday = this.iconByWeather(w.weather);
-        const iconTomorrow = this.iconByWeather(w.weatherTomorrow);
-
-        const todayTemp = `${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C`;
-        const tomorrowTemp = `${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`;
-
-        const todayRow =
-          `${this.pad(w.city, CITY_WIDTH)} ` +
-          `${this.pad('今日', 3)} ` +
-          `${this.pad(w.weather, WEATHER_WIDTH)} ` +
-          `${iconToday} ` +
-          `${this.pad(todayTemp, TEMP_WIDTH)}`;
-
-        const tomorrowRow =
-          `${this.pad('', CITY_WIDTH)} ` +
-          `${this.pad('明日', 3)} ` +
-          `${this.pad(w.weatherTomorrow, WEATHER_WIDTH)} ` +
-          `${iconTomorrow} ` +
-          `${this.pad(tomorrowTemp, TEMP_WIDTH)}`;
-
-        return `${todayRow}\n${tomorrowRow}`;
-      });
+        .filter((w): w is NonNullable<typeof w> => Boolean(w))
+        .map((w) => {
+          const iconToday = this.iconByWeather(w.weather);
+          const iconTomorrow = this.iconByWeather(w.weatherTomorrow);
+        
+          return (
+            `- ${w.city}\n` +
+            `  今日：${w.weather ?? '-'}${iconToday} ${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
+            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow} ${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
+          );
+        });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
     } catch (err: any) {
       console.error('[Weather] axios failed', {
