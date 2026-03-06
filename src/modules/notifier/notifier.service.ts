@@ -101,7 +101,7 @@ export class NotifierService {
         { name: '上海', id: '101020100' },
       ];
 
-      
+
       const weatherResults = await Promise.all(
         cities.map(async (city) => {
           const forecast = await this.weatherService.getDaysPrediction(city.id, '3d');
@@ -163,7 +163,6 @@ export class NotifierService {
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
     await this.sendWechatMessage(text)
-  
     console.log(now)
     console.log(text);
     return text;
