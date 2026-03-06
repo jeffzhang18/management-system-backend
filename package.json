@@ -1,6 +1,7 @@
 {
   "name": "management-system-backend",
   "version": "0.0.1",
+  "licenses":"MIT", 
   "description": "",
   "author": "",
   "private": true,
