@@ -73,7 +73,7 @@ export class NotifierService {
     return list[hash % list.length];
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM, {
+  @Cron('0 21 9 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
@@ -155,7 +155,7 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
-    await this.sendWechatMessage(text)
+    // await this.sendWechatMessage(text)
   
     console.log(now)
     console.log(text);
