@@ -101,6 +101,7 @@ export class NotifierService {
         { name: '上海', id: '101020100' },
       ];
 
+      
       const weatherResults = await Promise.all(
         cities.map(async (city) => {
           const forecast = await this.weatherService.getDaysPrediction(city.id, '3d');
