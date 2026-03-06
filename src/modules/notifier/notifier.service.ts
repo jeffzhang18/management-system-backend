@@ -71,7 +71,7 @@ export class NotifierService {
     return list[hash % list.length];
   }
 
-  @Cron('0 43 9 * * *', {
+  @Cron(CronExpression.EVERY_DAY_AT_9AM, {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
@@ -128,8 +128,8 @@ export class NotifierService {
         
           return (
             `- ${w.city}\n` +
-            `  今日：${w.weather ?? '-'}${iconToday}${" "}${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
-            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow}${" "}${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
+            `  今日：${w.weather ?? '-'}${iconToday} ${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
+            `  明日：${w.weatherTomorrow ?? '-'}${iconTomorrow} ${w.tempMinTomorrow ?? '-'}~${w.tempMaxTomorrow ?? '-'}°C`
           );
         });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
@@ -161,7 +161,7 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
-    // await this.sendWechatMessage(text)
+    await this.sendWechatMessage(text)
   
     console.log(now)
     console.log(text);
