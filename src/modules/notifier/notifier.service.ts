@@ -73,7 +73,7 @@ export class NotifierService {
     return list[hash % list.length];
   }
 
-  @Cron('0 24 9 * * *', {
+  @Cron('0 43 9 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
@@ -84,6 +84,7 @@ export class NotifierService {
       console.log('[Notifier] today is off day, skip reminder');
       return;
     }
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const holidayData = await this.holidaysService.getAllHolidays();
 
     // 2) 强制用东八区
@@ -94,28 +95,29 @@ export class NotifierService {
 
     // 3) 天气（多个城市）
     let weatherText = '';
+    console.log('[Cron] start', runId, process.pid);
 
     try {
-      const cities = ['江阴', '上海'];
+      const cities = [
+        { name: '江阴', id: '101190202' },
+        { name: '上海', id: '101020100' },
+      ];
 
       const weatherResults = await Promise.all(
         cities.map(async (city) => {
-          const loc = await this.weatherService.getLocation(city);
-          const locationId = loc?.location?.[0]?.id;
-          if (!locationId) return null;
-
-          const forecast = await this.weatherService.getDaysPrediction(locationId, '3d');
+          const forecast = await this.weatherService.getDaysPrediction(city.id, '3d');
+      
           const today = forecast?.daily?.[0];
-          const Tomorrow = forecast?.daily?.[1];
-
+          const tomorrow = forecast?.daily?.[1];
+      
           return {
-            city: loc?.location?.[0]?.name ?? city,
+            city: city.name,
             weather: today?.textDay,
             tempMin: today?.tempMin,
             tempMax: today?.tempMax,
-            weatherTomorrow: Tomorrow?.textDay,
-            tempMinTomorrow: Tomorrow?.tempMin,
-            tempMaxTomorrow: Tomorrow?.tempMax,
+            weatherTomorrow: tomorrow?.textDay,
+            tempMinTomorrow: tomorrow?.tempMin,
+            tempMaxTomorrow: tomorrow?.tempMax,
           };
         }),
       );
@@ -133,8 +135,14 @@ export class NotifierService {
           );
         });
       weatherText = lines.length ? lines.join('\n') : '- 🌤️ 暂无';
-    } catch (e) {
-      console.log('[Cron] Weather fetch failed', e)
+    } catch (err: any) {
+      console.error('[Weather] axios failed', {
+        message: err?.message,
+        code: err?.code,                // ETIMEDOUT / ECONNRESET / ENOTFOUND
+        status: err?.response?.status,  // 429 / 5xx
+        data: err?.response?.data,
+        url: err?.config?.url,
+      });
       weatherText = '- 🌤️ 获取失败';
     }
 
