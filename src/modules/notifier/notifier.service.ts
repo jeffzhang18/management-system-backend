@@ -71,7 +71,7 @@ export class NotifierService {
     return list[hash % list.length];
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM, {
+  @Cron('0 50 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
