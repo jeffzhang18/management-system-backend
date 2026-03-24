@@ -70,6 +70,7 @@ export class NotifierService {
   
     return list[hash % list.length];
   }
+  
 
   @Cron('0 50 8 * * *', {
     timeZone: 'Asia/Shanghai',
