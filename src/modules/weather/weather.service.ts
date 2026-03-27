@@ -58,6 +58,48 @@ export class WeatherService {
     };
   }
 
+  async getSavedLocationsByUserId(userId: string) {
+    const records = await this.userWeatherLocationRepository.find({
+      where: {
+        user_id: userId,
+        is_non_deleted: true,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    return {
+      message: 'Saved locations fetched successfully',
+      data: records.map((record) => record.location_id),
+    };
+  }
+
+  async removeSavedLocation(userId: string, locationId: string) {
+    const record = await this.userWeatherLocationRepository.findOne({
+      where: {
+        user_id: userId,
+        location_id: locationId,
+        is_non_deleted: true,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Saved location not found');
+    }
+
+    record.is_non_deleted = false;
+    const saved = await this.userWeatherLocationRepository.save(record);
+
+    return {
+      message: 'Saved location removed successfully',
+      data: saved,
+    };
+  }
+
   async getNow(location: string, lang?: string, unit?: 'm' | 'i') {
     try {
       const url = `https://${this.host}/v7/weather/now`;

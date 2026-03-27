@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { WeatherService } from './weather.service';
 import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
@@ -17,6 +17,37 @@ export class WeatherController {
   @Post('saved-location')
   saveLocation(@User('email') email: string, @Body() body: SaveLocationDto) {
     return this.weatherService.saveUserLocation(email, body.locationId);
+  }
+
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    description: '用户唯一ID(user_info.user_id)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @Get('saved-location')
+  getSavedLocations(@Query('userId') userId: string) {
+    return this.weatherService.getSavedLocationsByUserId(userId);
+  }
+
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    description: '用户唯一ID(user_info.user_id)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiQuery({
+    name: 'locationId',
+    required: true,
+    description: '需要取消保存的地区 LocationID',
+    example: '101190202',
+  })
+  @Delete('saved-location')
+  removeSavedLocation(
+    @Query('userId') userId: string,
+    @Query('locationId') locationId: string,
+  ) {
+    return this.weatherService.removeSavedLocation(userId, locationId);
   }
 
   @Public()
