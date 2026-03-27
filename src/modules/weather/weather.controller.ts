@@ -1,14 +1,23 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiQuery } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { WeatherService } from './weather.service';
 import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
 import { HoursPredictionQueryDto } from './dto/hours-prediction-query.dto';
 import { NowQueryDto } from './dto/now-query.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { User } from '../../common/decorators/user.decorator';
+import { SaveLocationDto } from './dto/save-location.dto';
 
 @Controller('weather')
 export class WeatherController {
   constructor(private readonly weatherService: WeatherService) {}
+
+  @ApiBearerAuth('access-token')
+  @ApiBody({ type: SaveLocationDto })
+  @Post('saved-location')
+  saveLocation(@User('email') email: string, @Body() body: SaveLocationDto) {
+    return this.weatherService.saveUserLocation(email, body.locationId);
+  }
 
   @Public()
   @ApiQuery({

@@ -1,15 +1,61 @@
-import { Injectable, HttpException } from '@nestjs/common';
+import { Injectable, HttpException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserWeatherLocation } from './entities/user-weather-location.entity';
+import { UserService } from 'src/domain/user/user.service';
 
 @Injectable()
 export class WeatherService {
   private readonly host: string;
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(UserWeatherLocation)
+    private readonly userWeatherLocationRepository: Repository<UserWeatherLocation>,
+    private readonly userService: UserService,
+  ) {
     this.host = this.configService.get<string>('QWEATHER_HOST')!;
     this.apiKey = this.configService.get<string>('QWEATHER_TOKEN')!;
+  }
+
+  async saveUserLocation(email: string, locationId: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existing = await this.userWeatherLocationRepository.findOne({
+      where: {
+        user_id: user.user_id,
+        location_id: locationId,
+      },
+    });
+
+    if (existing) {
+      existing.is_non_deleted = true;
+      const saved = await this.userWeatherLocationRepository.save(existing);
+      return {
+        message: 'Location saved successfully',
+        data: saved,
+      };
+    }
+
+    const record = this.userWeatherLocationRepository.create({
+      user_id: user.user_id,
+      location_id: locationId,
+      is_non_deleted: true,
+    });
+
+    const saved = await this.userWeatherLocationRepository.save(record);
+
+    return {
+      message: 'Location saved successfully',
+      data: saved,
+    };
   }
 
   async getNow(location: string, lang?: string, unit?: 'm' | 'i') {
