@@ -12,12 +12,12 @@ export class WeatherService {
     this.apiKey = this.configService.get<string>('QWEATHER_TOKEN')!;
   }
 
-  async getNow(location: string) {
+  async getNow(location: string, lang?: string, unit?: 'm' | 'i') {
     try {
       const url = `https://${this.host}/v7/weather/now`;
 
       const res = await axios.get(url, {
-        params: { location },
+        params: { location, lang, unit },
         headers: {
           'X-QW-Api-Key': this.apiKey,
         },
@@ -25,10 +25,7 @@ export class WeatherService {
 
       return res.data;
     } catch (error) {
-      throw new HttpException(
-        'Failed to fetch weather data',
-        502,
-      );
+      throw new HttpException('Failed to fetch weather data', 502);
     }
   }
 
@@ -36,18 +33,15 @@ export class WeatherService {
     try {
       const url = `https://${this.host}/geo/v2/city/lookup`;
       const res = await axios.get(url, {
-          params:{location},
-          headers:{
-              'X-QW-Api-Key': this.apiKey
-          }
-      })
-      return res.data
+        params: { location },
+        headers: {
+          'X-QW-Api-Key': this.apiKey,
+        },
+      });
+      return res.data;
     } catch (error) {
-        throw new HttpException(
-          'Failed to fetch weather data',
-          502,
-        );
-      }
+      throw new HttpException('Failed to fetch weather data', 502);
+    }
   }
 
   async getDaysPrediction(
@@ -56,35 +50,31 @@ export class WeatherService {
   ) {
     try {
       const url = `https://${this.host}/v7/weather/${days}`;
-  
+
       const res = await axios.get(url, {
         params: { location: locationId },
         headers: {
           'X-QW-Api-Key': this.apiKey,
         },
       });
-  
+
       return res.data;
     } catch (error) {
       throw new HttpException('Failed to fetch weather data', 502);
     }
   }
-  async getHoursPrediction(
-    locationId: string,
-    hours: '24h'|'72h'|'168h'
-  ) {
+  async getHoursPrediction(locationId: string, hours: '24h' | '72h' | '168h') {
     try {
-      const url = `https://${this.host}/v7/weather/${hours}`
+      const url = `https://${this.host}/v7/weather/${hours}`;
       const res = await axios.get(url, {
-        params:{location: locationId},
-        headers:{
+        params: { location: locationId },
+        headers: {
           'X-QW-Api-key': this.apiKey,
-        }
+        },
       });
-      return res.data
+      return res.data;
     } catch (error) {
       throw new HttpException('Failed to fetch weather data', 502);
     }
   }
-  
 }
