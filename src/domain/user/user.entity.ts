@@ -14,11 +14,14 @@ export class User {
   @Column({ type: 'int', nullable: true })
   gender: number;
 
-  @Column({nullable:true})
-  avatar: string
+  @Column({ nullable: true })
+  avatar: string;
 
   @Column({ unique: true })
   email: string;
+
+  @Column({ unique: true })
+  user_id: string;
 
   @Column()
   password: string; // bcrypt hash

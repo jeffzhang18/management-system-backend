@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { User } from './user.entity';
 import { ConflictException } from '@nestjs/common';
-
 
 @Injectable()
 export class UserService {
@@ -26,16 +26,17 @@ export class UserService {
     if (existing) {
       throw new ConflictException('Email already exists');
     }
-  
+
     const hash = await bcrypt.hash(password, 10);
-  
+
     const user = this.userRepository.create({
       email,
+      user_id: randomUUID(),
       user_name: userName,
       password: hash,
       role: ['user'], // 默认角色
     });
-  
+
     return this.userRepository.save(user);
   }
 }

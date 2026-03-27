@@ -31,21 +31,21 @@ export class AuthService {
       role: user.role,
       type: 'access',
     };
-  
+
     const refreshPayload = {
       sub: user.id,
       type: 'refresh',
     };
-  
 
     return {
       user: {
         id: user.id,
+        user_id: user.user_id,
         email: user.email,
         username: user.user_name,
         avatar: user.avatar,
         role: user.role,
-        premissions:[]
+        premissions: [],
       },
       accessToken: this.jwtService.sign(accessPayload, {
         expiresIn: '1d',
