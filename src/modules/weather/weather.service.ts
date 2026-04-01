@@ -4,6 +4,7 @@ import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserWeatherLocation } from './entities/user-weather-location.entity';
+import { UserWeatherLocationIndex } from './entities/user-weather-location-index.entity';
 import { UserService } from 'src/domain/user/user.service';
 
 @Injectable()
@@ -15,6 +16,8 @@ export class WeatherService {
     private readonly configService: ConfigService,
     @InjectRepository(UserWeatherLocation)
     private readonly userWeatherLocationRepository: Repository<UserWeatherLocation>,
+    @InjectRepository(UserWeatherLocationIndex)
+    private readonly userWeatherLocationIndexRepository: Repository<UserWeatherLocationIndex>,
     private readonly userService: UserService,
   ) {
     this.host = this.configService.get<string>('QWEATHER_HOST')!;
@@ -54,6 +57,45 @@ export class WeatherService {
 
     return {
       message: 'Location saved successfully',
+      data: saved,
+    };
+  }
+
+  async saveUserLocationList(email: string, locationList: string[]) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existing = await this.userWeatherLocationIndexRepository.findOne({
+      where: {
+        user_id: user.user_id,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    if (existing) {
+      existing.location_list = locationList;
+      const saved = await this.userWeatherLocationIndexRepository.save(existing);
+
+      return {
+        message: 'Location list saved successfully',
+        data: saved,
+      };
+    }
+
+    const record = this.userWeatherLocationIndexRepository.create({
+      user_id: user.user_id,
+      location_list: locationList,
+    });
+
+    const saved = await this.userWeatherLocationIndexRepository.save(record);
+
+    return {
+      message: 'Location list saved successfully',
       data: saved,
     };
   }
