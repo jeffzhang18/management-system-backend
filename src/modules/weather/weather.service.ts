@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { UserWeatherLocation } from './entities/user-weather-location.entity';
 import { UserWeatherLocationIndex } from './entities/user-weather-location-index.entity';
 import { UserService } from 'src/domain/user/user.service';
+import { SaveLocationDto } from './dto/save-location.dto';
 
 @Injectable()
 export class WeatherService {
@@ -24,22 +25,19 @@ export class WeatherService {
     this.apiKey = this.configService.get<string>('QWEATHER_TOKEN')!;
   }
 
-  async saveUserLocation(email: string, locationId: string) {
-    const user = await this.userService.findByEmail(email);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
+  async saveUserLocation(userId: string, payload: SaveLocationDto) {
     const existing = await this.userWeatherLocationRepository.findOne({
       where: {
-        user_id: user.user_id,
-        location_id: locationId,
+        user_id: userId,
+        location_id: payload.locationId,
       },
     });
 
     if (existing) {
       existing.is_non_deleted = true;
+      existing.country = payload.country;
+      existing.name = payload.name;
+      existing.adm1 = payload.adm1;
       const saved = await this.userWeatherLocationRepository.save(existing);
       return {
         message: 'Location saved successfully',
@@ -48,9 +46,12 @@ export class WeatherService {
     }
 
     const record = this.userWeatherLocationRepository.create({
-      user_id: user.user_id,
-      location_id: locationId,
+      user_id: userId,
+      location_id: payload.locationId,
       is_non_deleted: true,
+      country: payload.country,
+      name: payload.name,
+      adm1: payload.adm1,
     });
 
     const saved = await this.userWeatherLocationRepository.save(record);
@@ -100,28 +101,6 @@ export class WeatherService {
     };
   }
 
-  async getSavedLocationList(email: string) {
-    const user = await this.userService.findByEmail(email);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const record = await this.userWeatherLocationIndexRepository.findOne({
-      where: {
-        user_id: user.user_id,
-      },
-      order: {
-        id: 'DESC',
-      },
-    });
-
-    return {
-      message: 'Location list fetched successfully',
-      data: record?.location_list ?? [],
-    };
-  }
-
   async getSavedLocationsByUserId(userId: string) {
     const records = await this.userWeatherLocationRepository.find({
       where: {
@@ -135,7 +114,12 @@ export class WeatherService {
 
     return {
       message: 'Saved locations fetched successfully',
-      data: records.map((record) => record.location_id),
+      data: records.map((record) => ({
+        locationId: record.location_id,
+        country: record.country,
+        name: record.name,
+        adm1: record.adm1,
+      })),
     };
   }
 

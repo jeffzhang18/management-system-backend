@@ -13,4 +13,13 @@ export class UserWeatherLocation {
 
   @Column({ nullable: true, default: true })
   is_non_deleted: boolean;
+
+  @Column({ nullable: true })
+  country: string;
+
+  @Column({ name: 'name', nullable: true })
+  name: string;
+
+  @Column({ nullable: true })
+  adm1: string;
 }
