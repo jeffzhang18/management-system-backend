@@ -36,6 +36,12 @@ export class WeatherController {
     return this.weatherService.saveUserLocationList(email, body.locationList);
   }
 
+  @ApiBearerAuth('access-token')
+  @Get('saved-location-list')
+  getLocationList(@User('email') email: string) {
+    return this.weatherService.getUserLocationList(email);
+  }
+
   @ApiQuery({
     name: 'userId',
     required: true,

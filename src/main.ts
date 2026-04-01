@@ -5,7 +5,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { RequestMethod } from '@nestjs/common';
+import { webcrypto } from 'node:crypto';
 
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto as typeof globalThis.crypto;
+}
 
 async function bootstrap() {
   console.log('[ENV]', {
@@ -24,7 +28,7 @@ async function bootstrap() {
       { path: 'ping', method: RequestMethod.GET },
       // 如果你还想让 swagger 不带 /api，也可以排除 docs：
       { path: 'docs', method: RequestMethod.GET },
-      { path: 'docs/(.*)', method: RequestMethod.GET },
+      { path: 'docs/*path', method: RequestMethod.GET },
     ],
   });
 

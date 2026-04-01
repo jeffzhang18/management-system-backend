@@ -80,7 +80,8 @@ export class WeatherService {
 
     if (existing) {
       existing.location_list = locationList;
-      const saved = await this.userWeatherLocationIndexRepository.save(existing);
+      const saved =
+        await this.userWeatherLocationIndexRepository.save(existing);
 
       return {
         message: 'Location list saved successfully',
@@ -98,6 +99,61 @@ export class WeatherService {
     return {
       message: 'Location list saved successfully',
       data: saved,
+    };
+  }
+
+  async getUserLocationList(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const record = await this.userWeatherLocationIndexRepository.findOne({
+      where: {
+        user_id: user.user_id,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    const locationList = record?.location_list ?? [];
+
+    if (locationList.length === 0) {
+      return {
+        message: 'Location list fetched successfully',
+        data: [],
+      };
+    }
+
+    const savedLocations = await this.userWeatherLocationRepository.find({
+      where: {
+        user_id: user.user_id,
+        is_non_deleted: true,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    const locationMap = new Map(
+      savedLocations.map((item) => [
+        item.location_id,
+        {
+          locationId: item.location_id,
+          country: item.country,
+          name: item.name,
+          adm1: item.adm1,
+        },
+      ]),
+    );
+
+    return {
+      message: 'Location list fetched successfully',
+      data: locationList
+        .map((locationId) => locationMap.get(locationId))
+        .filter(Boolean),
     };
   }
 
