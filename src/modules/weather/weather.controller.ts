@@ -7,6 +7,7 @@ import { NowQueryDto } from './dto/now-query.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { User } from '../../common/decorators/user.decorator';
 import { SaveLocationDto } from './dto/save-location.dto';
+import { SaveLocationListDto } from './dto/save-location-list.dto';
 
 @Controller('weather')
 export class WeatherController {
@@ -17,6 +18,16 @@ export class WeatherController {
   @Post('saved-location')
   saveLocation(@User('email') email: string, @Body() body: SaveLocationDto) {
     return this.weatherService.saveUserLocation(email, body.locationId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiBody({ type: SaveLocationListDto })
+  @Post('saved-location-list')
+  saveLocationList(
+    @User('email') email: string,
+    @Body() body: SaveLocationListDto,
+  ) {
+    return this.weatherService.saveUserLocationList(email, body.locationList);
   }
 
   @ApiQuery({
