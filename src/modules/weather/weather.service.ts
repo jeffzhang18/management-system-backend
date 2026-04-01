@@ -100,6 +100,28 @@ export class WeatherService {
     };
   }
 
+  async getSavedLocationList(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const record = await this.userWeatherLocationIndexRepository.findOne({
+      where: {
+        user_id: user.user_id,
+      },
+      order: {
+        id: 'DESC',
+      },
+    });
+
+    return {
+      message: 'Location list fetched successfully',
+      data: record?.location_list ?? [],
+    };
+  }
+
   async getSavedLocationsByUserId(userId: string) {
     const records = await this.userWeatherLocationRepository.find({
       where: {
