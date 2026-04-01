@@ -14,10 +14,16 @@ export class WeatherController {
   constructor(private readonly weatherService: WeatherService) {}
 
   @ApiBearerAuth('access-token')
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    description: '用户唯一ID(user_info.user_id)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiBody({ type: SaveLocationDto })
   @Post('saved-location')
-  saveLocation(@User('email') email: string, @Body() body: SaveLocationDto) {
-    return this.weatherService.saveUserLocation(email, body.locationId);
+  saveLocation(@Query('userId') userId: string, @Body() body: SaveLocationDto) {
+    return this.weatherService.saveUserLocation(userId, body);
   }
 
   @ApiBearerAuth('access-token')
@@ -28,12 +34,6 @@ export class WeatherController {
     @Body() body: SaveLocationListDto,
   ) {
     return this.weatherService.saveUserLocationList(email, body.locationList);
-  }
-
-  @ApiBearerAuth('access-token')
-  @Get('saved-location-list')
-  getSavedLocationList(@User('email') email: string) {
-    return this.weatherService.getSavedLocationList(email);
   }
 
   @ApiQuery({
