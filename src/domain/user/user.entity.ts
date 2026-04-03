@@ -28,4 +28,16 @@ export class User {
 
   @Column({ type: 'json', nullable: true })
   role: string[];
+
+  @Column({ nullable: true })
+  language: string;
+
+  @Column({ nullable: true })
+  country: string;
+
+  @Column({ nullable: true })
+  contact: string;
+
+  @Column({ nullable: true })
+  about: string;
 }
