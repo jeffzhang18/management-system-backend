@@ -25,6 +25,8 @@ export class AuthService {
   }
 
   login(user: User) {
+    const { password, ...userWithoutPassword } = user;
+
     const accessPayload = {
       sub: user.id,
       email: user.email,
@@ -38,15 +40,7 @@ export class AuthService {
     };
 
     return {
-      user: {
-        id: user.id,
-        user_id: user.user_id,
-        email: user.email,
-        username: user.user_name,
-        avatar: user.avatar,
-        role: user.role,
-        premissions: [],
-      },
+      user: userWithoutPassword,
       accessToken: this.jwtService.sign(accessPayload, {
         expiresIn: '1d',
       }),
