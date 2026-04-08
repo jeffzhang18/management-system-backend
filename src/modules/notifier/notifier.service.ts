@@ -8,6 +8,12 @@ import { NORMAL_MESSAGES, FRIDAY_MESSAGES } from './assets/message';
 
 @Injectable()
 export class NotifierService {
+  private readonly lifecycleEvent = process.env.npm_lifecycle_event;
+
+  private shouldSkipCronInDev(): boolean {
+    return this.lifecycleEvent === 'start:dev';
+  }
+
   constructor(
     private readonly holidaysService: HolidaysService,
     private readonly weatherService: WeatherService,
@@ -22,18 +28,24 @@ export class NotifierService {
     if (w.includes('阴')) return '☁️';
     if (w.includes('云')) return '⛅';
     if (w.includes('晴')) return '☀️';
-    if (w.includes('雾') || w.includes('霾') || w.includes('沙') || w.includes('尘')) return '🌫️';
+    if (
+      w.includes('雾') ||
+      w.includes('霾') ||
+      w.includes('沙') ||
+      w.includes('尘')
+    )
+      return '🌫️';
     return '🌤️';
   }
 
   private async sendWechatMessage(content: string) {
     const webhookUrl = process.env.WECHAT_WEBHOOK;
-  
+
     if (!webhookUrl) {
       console.warn('[Notifier] WECHAT_WEBHOOK is empty, skip wechat push');
       return;
     }
-  
+
     try {
       await axios.post(
         webhookUrl,
@@ -41,17 +53,20 @@ export class NotifierService {
           msgtype: 'text',
           text: { content },
         },
-        { 
+        {
           headers: { 'Content-Type': 'application/json' },
-          timeout: 10_000
+          timeout: 10_000,
         },
-        
       );
-  
+
       console.log('[Notifier] WeChat push success');
     } catch (err) {
       console.error('[Notifier] WeChat push failed:', err?.message);
-      console.error('[Notifier] status/data:', err?.response?.status, err?.response?.data);
+      console.error(
+        '[Notifier] status/data:',
+        err?.response?.status,
+        err?.response?.data,
+      );
     }
   }
 
@@ -61,21 +76,24 @@ export class NotifierService {
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     const seedStr = `${y}-${m}-${d}`;
-  
+
     // 简单 hash
     let hash = 0;
     for (let i = 0; i < seedStr.length; i++) {
       hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
     }
-  
+
     return list[hash % list.length];
   }
-  
 
   @Cron('0 50 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminder() {
+    if (this.shouldSkipCronInDev()) {
+      console.log('[Notifier] running in start:dev, skip cron task');
+      return;
+    }
 
     // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
     const isOffDay = await this.holidaysService.isTodayOffDay();
@@ -102,14 +120,16 @@ export class NotifierService {
         { name: '上海', id: '101020100' },
       ];
 
-
       const weatherResults = await Promise.all(
         cities.map(async (city) => {
-          const forecast = await this.weatherService.getDaysPrediction(city.id, '3d');
-      
+          const forecast = await this.weatherService.getDaysPrediction(
+            city.id,
+            '3d',
+          );
+
           const today = forecast?.daily?.[0];
           const tomorrow = forecast?.daily?.[1];
-      
+
           return {
             city: city.name,
             weather: today?.textDay,
@@ -127,7 +147,7 @@ export class NotifierService {
         .map((w) => {
           const iconToday = this.iconByWeather(w.weather);
           const iconTomorrow = this.iconByWeather(w.weatherTomorrow);
-        
+
           return (
             `- ${w.city}\n` +
             `  今日：${w.weather ?? '-'}${iconToday} ${w.tempMin ?? '-'}~${w.tempMax ?? '-'}°C\n` +
@@ -138,8 +158,8 @@ export class NotifierService {
     } catch (err: any) {
       console.error('[Weather] axios failed', {
         message: err?.message,
-        code: err?.code,                // ETIMEDOUT / ECONNRESET / ENOTFOUND
-        status: err?.response?.status,  // 429 / 5xx
+        code: err?.code, // ETIMEDOUT / ECONNRESET / ENOTFOUND
+        status: err?.response?.status, // 429 / 5xx
         data: err?.response?.data,
         url: err?.config?.url,
       });
@@ -163,8 +183,8 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
-    await this.sendWechatMessage(text)
-    console.log(now)
+    await this.sendWechatMessage(text);
+    console.log(now);
     console.log(text);
     return text;
   }
@@ -173,6 +193,11 @@ export class NotifierService {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyGetOffReminder() {
+    if (this.shouldSkipCronInDev()) {
+      console.log('[Notifier] running in start:dev, skip cron task');
+      return;
+    }
+
     // 1) 日期提醒（假期/周末/发薪日）周末和假期不提示
     const isOffDay = await this.holidaysService.isTodayOffDay();
 
@@ -185,19 +210,16 @@ export class NotifierService {
       const now = new Date(
         new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
       );
-  
+
       const isFriday = now.getDay() === 5; // 0日 1一 ... 5五 6六
       const pool = isFriday ? FRIDAY_MESSAGES : NORMAL_MESSAGES;
 
       const content = this.pickDailyMessage(now, pool);
       console.log(content);
-      
+
       await this.sendWechatMessage(content);
     } catch (e) {
       console.error('[Cron] GetOff reminder failed', e);
     }
   }
-
-
-
 }
