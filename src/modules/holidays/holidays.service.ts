@@ -3,7 +3,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { WeatherService } from '../weather/weather.service'; // 按你的路径改
 import axios from 'axios';
 
-
 type HolidayCnDay = {
   name: string;
   date: string; // YYYY-MM-DD
@@ -17,9 +16,29 @@ type HolidayCnYear = {
 
 @Injectable()
 export class HolidaysService {
+  private readonly chinaTimeZone = 'Asia/Shanghai';
+
+  private getChinaYmd(date: Date = new Date()): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.chinaTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private getChinaToday(): Date {
+    return this.parseYmdLocal(this.getChinaYmd());
+  }
 
   private getCurrentYear(): number {
-    return new Date().getFullYear();
+    return this.getChinaToday().getFullYear();
   }
 
   /** 本地时区：Date -> YYYY-MM-DD（避免 toISOString 时区偏移） */
@@ -50,7 +69,9 @@ export class HolidaysService {
     return data as HolidayCnYear;
   }
   // 明年文件不存在不要 throw
-  private async fetchHolidayYearSafe(year: number): Promise<HolidayCnYear | null> {
+  private async fetchHolidayYearSafe(
+    year: number,
+  ): Promise<HolidayCnYear | null> {
     try {
       return await this.fetchHolidayYear(year);
     } catch (e) {
@@ -59,7 +80,7 @@ export class HolidaysService {
     }
   }
 
-  // 
+  //
   /**
    * 构建覆盖表：date -> isOffDay（调休覆盖自然周末/工作日）
    * 注意：holiday-cn 的 days 只覆盖“特殊日”，未覆盖的按自然周末/工作日推断
@@ -87,22 +108,25 @@ export class HolidaysService {
   private isWorkday(date: Date, dayMap: Map<string, HolidayCnDay>): boolean {
     return !this.isOffDay(date, dayMap);
   }
-  
+
   // 判断今天是否是休息日
   async isTodayOffDay(): Promise<boolean> {
     const year = this.getCurrentYear();
     const { days } = await this.fetchHolidayYear(year);
-  
+
     const dayMap = this.buildDayMap(days);
-  
-    const today = new Date();
-    today.setHours(0,0,0,0);
-  
+
+    const today = this.getChinaToday();
+
     return this.isOffDay(today, dayMap);
   }
 
   /** 找某月最后一个工作日（调休生效） */
-  private getLastWorkdayOfMonth(year: number, month0: number, dayMap: Map<string, HolidayCnDay>): Date {
+  private getLastWorkdayOfMonth(
+    year: number,
+    month0: number,
+    dayMap: Map<string, HolidayCnDay>,
+  ): Date {
     // month0: 0-11
     let d = new Date(year, month0 + 1, 0, 0, 0, 0, 0); // 本月最后一天（本地）
     while (!this.isWorkday(d, dayMap)) {
@@ -117,7 +141,7 @@ export class HolidaysService {
    */
   private getFutureOffSegments(days: HolidayCnDay[], todayStr: string) {
     const offDays = days
-      .filter(d => d.isOffDay && d.date >= todayStr)
+      .filter((d) => d.isOffDay && d.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (offDays.length === 0) return [];
@@ -187,18 +211,18 @@ export class HolidaysService {
       this.getLatestWeekend(),
       this.getLatestPayday(),
     ]);
-  
+
     return {
       holidayDaysLeft:
         latestHoliday?.status === 'upcoming' ? latestHoliday.daysLeft : null,
       holidayDaysName:
         latestHoliday?.status === 'upcoming' ? latestHoliday.name : null,
-  
+
       weekendDaysLeft:
         latestWeekend?.status === 'upcoming' ? latestWeekend.daysLeft : null,
-  
+
       paydayDaysLeft: latestPayday?.daysLeft ?? null,
-  
+
       // 可选：把 holiday 状态也带出去，方便前端/日志判断
       holidayStatus: latestHoliday?.status ?? 'unknown',
     };
@@ -209,12 +233,12 @@ export class HolidaysService {
       const year = this.getCurrentYear();
       const { days } = await this.fetchHolidayYear(year);
 
-      const todayStr = this.toYmdLocal(new Date());
+      const todayStr = this.getChinaYmd();
       const segments = this.getFutureOffSegments(days, todayStr);
 
       return {
         remainHolidays: segments.reduce((sum, s) => sum + s.days, 0),
-        holidays: segments.map(s => ({
+        holidays: segments.map((s) => ({
           name: s.name,
           dates: s.dates,
           days: s.days,
@@ -228,18 +252,15 @@ export class HolidaysService {
   async getLatestHoliday() {
     try {
       const thisYear = this.getCurrentYear();
-  
-      const todayStr = this.toYmdLocal(new Date());
+
+      const todayStr = this.getChinaYmd();
       const today = this.parseYmdLocal(todayStr);
-  
+
       const y1 = await this.fetchHolidayYearSafe(thisYear);
       const y2 = await this.fetchHolidayYearSafe(thisYear + 1);
-  
-      const daysAll = [
-        ...(y1?.days ?? []),
-        ...(y2?.days ?? []),
-      ];
-  
+
+      const daysAll = [...(y1?.days ?? []), ...(y2?.days ?? [])];
+
       if (daysAll.length === 0) {
         // 两年都拿不到（网络/源不可用）
         return {
@@ -252,9 +273,9 @@ export class HolidaysService {
           reason: 'holiday_source_unavailable',
         };
       }
-  
+
       const segments = this.getFutureOffSegments(daysAll, todayStr);
-  
+
       if (segments.length === 0) {
         // 真的没有未来 off 段（很少见，但要兜底）
         return {
@@ -266,13 +287,17 @@ export class HolidaysService {
           daysLeft: null,
         };
       }
-  
+
       // ongoing：今天是否在某段内
-      const ongoing = segments.find(s => todayStr >= s.startDate && todayStr <= s.endDate);
+      const ongoing = segments.find(
+        (s) => todayStr >= s.startDate && todayStr <= s.endDate,
+      );
       if (ongoing) {
         const end = this.parseYmdLocal(ongoing.endDate);
-        const daysLeft = Math.floor((end.getTime() - today.getTime()) / 86400000);
-  
+        const daysLeft = Math.floor(
+          (end.getTime() - today.getTime()) / 86400000,
+        );
+
         return {
           status: 'ongoing',
           name: ongoing.name,
@@ -282,12 +307,14 @@ export class HolidaysService {
           daysLeft,
         };
       }
-  
+
       // upcoming
       const next = segments[0];
       const start = this.parseYmdLocal(next.startDate);
-      const daysLeft = Math.ceil((start.getTime() - today.getTime()) / 86400000);
-  
+      const daysLeft = Math.ceil(
+        (start.getTime() - today.getTime()) / 86400000,
+      );
+
       return {
         status: 'upcoming',
         name: next.name,
@@ -312,7 +339,7 @@ export class HolidaysService {
       const { days } = await this.fetchHolidayYear(year);
       const dayMap = this.buildDayMap(days);
 
-      const todayStr = this.toYmdLocal(new Date());
+      const todayStr = this.getChinaYmd();
       const today = this.parseYmdLocal(todayStr);
 
       const isWeekendOff = (d: Date) => {
@@ -345,14 +372,23 @@ export class HolidaysService {
         else break;
       }
 
-      const status: 'ongoing' | 'upcoming' = isWeekendOff(today) ? 'ongoing' : 'upcoming';
+      const status: 'ongoing' | 'upcoming' = isWeekendOff(today)
+        ? 'ongoing'
+        : 'upcoming';
 
-      const daysCount = Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+      const daysCount =
+        Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
 
       const daysLeft =
         status === 'ongoing'
-          ? Math.max(Math.floor((endDate.getTime() - today.getTime()) / 86400000), 0)
-          : Math.max(Math.floor((startDate.getTime() - today.getTime()) / 86400000), 0);
+          ? Math.max(
+              Math.floor((endDate.getTime() - today.getTime()) / 86400000),
+              0,
+            )
+          : Math.max(
+              Math.floor((startDate.getTime() - today.getTime()) / 86400000),
+              0,
+            );
 
       return {
         status,
@@ -380,16 +416,22 @@ export class HolidaysService {
       const { days } = await this.fetchHolidayYear(year);
       const dayMap = this.buildDayMap(days);
 
-      const todayStr = this.toYmdLocal(new Date());
+      const todayStr = this.getChinaYmd();
       const today = this.parseYmdLocal(todayStr);
 
       let payday: Date;
 
       if (day == null) {
-        payday = this.getLastWorkdayOfMonth(today.getFullYear(), today.getMonth(), dayMap);
+        payday = this.getLastWorkdayOfMonth(
+          today.getFullYear(),
+          today.getMonth(),
+          dayMap,
+        );
       } else {
         if (!Number.isInteger(day) || day < 1 || day > 31) {
-          throw new BadRequestException('day must be an integer between 1 and 31');
+          throw new BadRequestException(
+            'day must be an integer between 1 and 31',
+          );
         }
 
         const todayDate = today.getDate();
