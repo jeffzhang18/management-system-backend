@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './domain/user/user.model';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotifierModule } from './modules/notifier/notifier.module';
+import { SysModule } from './modules/sys/sys.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,8 +18,6 @@ import { ApiCallLogModule } from './common/logging/api-call-log.module';
 import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { WsModule } from './ws/ws.module';
-
-
 
 @Module({
   imports: [
@@ -32,7 +31,7 @@ import { WsModule } from './ws/ws.module';
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      autoLoadEntities: true,   // ✅ 关键
+      autoLoadEntities: true, // ✅ 关键
       synchronize: true, // ⚠️ 仅开发环境
     }),
     UserModule,
@@ -40,6 +39,7 @@ import { WsModule } from './ws/ws.module';
     HolidaysModule,
     AuthModule,
     NotifierModule,
+    SysModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),
@@ -50,11 +50,11 @@ import { WsModule } from './ws/ws.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    }, 
+    },
     {
       provide: APP_INTERCEPTOR,
-      useClass: ApiCallLogInterceptor
-    }
+      useClass: ApiCallLogInterceptor,
+    },
   ],
 })
 export class AppModule {}
