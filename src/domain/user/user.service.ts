@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { User } from './user.entity';
 import { ConflictException } from '@nestjs/common';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 @Injectable()
 export class UserService {
@@ -38,5 +39,46 @@ export class UserService {
     });
 
     return this.userRepository.save(user);
+  }
+
+  async updateProfileByEmail(email: string, payload: UpdateUserProfileDto) {
+    const user = await this.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (payload.name !== undefined) {
+      user.name = payload.name;
+    }
+    if (payload.userName !== undefined) {
+      user.user_name = payload.userName;
+    }
+    if (payload.gender !== undefined) {
+      user.gender = payload.gender;
+    }
+    if (payload.avatar !== undefined) {
+      user.avatar = payload.avatar;
+    }
+    if (payload.language !== undefined) {
+      user.language = payload.language;
+    }
+    if (payload.country !== undefined) {
+      user.country = payload.country;
+    }
+    if (payload.contact !== undefined) {
+      user.contact = payload.contact;
+    }
+    if (payload.about !== undefined) {
+      user.about = payload.about;
+    }
+
+    const saved = await this.userRepository.save(user);
+    const { password, ...safeUser } = saved;
+
+    return {
+      message: 'Profile updated successfully',
+      data: safeUser,
+    };
   }
 }
