@@ -1,7 +1,7 @@
 import { Injectable, HttpException, BadRequestException } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { WeatherService } from '../weather/weather.service'; // 按你的路径改
 import axios from 'axios';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import { join } from 'path';
 
 type HolidayCnDay = {
   name: string;
@@ -17,6 +17,11 @@ type HolidayCnYear = {
 @Injectable()
 export class HolidaysService {
   private readonly chinaTimeZone = 'Asia/Shanghai';
+  private readonly holidayCacheDir = join(process.cwd(), 'cache', 'holiday-cn');
+  private readonly holidayYearInflight = new Map<
+    number,
+    Promise<HolidayCnYear>
+  >();
 
   private getChinaYmd(date: Date = new Date()): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -63,10 +68,73 @@ export class HolidaysService {
   }
 
   /** 抓 holiday-cn 当年的 json */
-  private async fetchHolidayYear(year: number): Promise<HolidayCnYear> {
+  private async fetchHolidayYearFromUpstream(
+    year: number,
+  ): Promise<HolidayCnYear> {
     const url = `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`;
     const { data } = await axios.get(url, { timeout: 10000 });
     return data as HolidayCnYear;
+  }
+
+  private getHolidayCacheFilePath(year: number): string {
+    return join(this.holidayCacheDir, `${year}.json`);
+  }
+
+  private async readHolidayYearFromFile(
+    year: number,
+  ): Promise<HolidayCnYear | null> {
+    try {
+      const filePath = this.getHolidayCacheFilePath(year);
+      const raw = await readFile(filePath, 'utf8');
+      const data = JSON.parse(raw) as HolidayCnYear;
+
+      if (data?.year === year && Array.isArray(data?.days)) {
+        return data;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeHolidayYearToFile(
+    year: number,
+    data: HolidayCnYear,
+  ): Promise<void> {
+    await mkdir(this.holidayCacheDir, { recursive: true });
+    const filePath = this.getHolidayCacheFilePath(year);
+    await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+  }
+
+  /**
+   * 年度节假日数据缓存：
+   * 1) 先查本地文件缓存
+   * 2) 没有缓存再请求上游
+   * 3) 请求成功后写入本地缓存
+   */
+  private async fetchHolidayYear(year: number): Promise<HolidayCnYear> {
+    const cached = await this.readHolidayYearFromFile(year);
+    if (cached) {
+      return cached;
+    }
+
+    const pending = this.holidayYearInflight.get(year);
+    if (pending) {
+      return pending;
+    }
+
+    const request = this.fetchHolidayYearFromUpstream(year)
+      .then(async (data) => {
+        await this.writeHolidayYearToFile(year, data);
+        return data;
+      })
+      .finally(() => {
+        this.holidayYearInflight.delete(year);
+      });
+
+    this.holidayYearInflight.set(year, request);
+    return request;
   }
   // 明年文件不存在不要 throw
   private async fetchHolidayYearSafe(
@@ -112,7 +180,8 @@ export class HolidaysService {
   // 判断今天是否是休息日
   async isTodayOffDay(): Promise<boolean> {
     const year = this.getCurrentYear();
-    const { days } = await this.fetchHolidayYear(year);
+    const data = await this.fetchHolidayYearSafe(year);
+    const days = data?.days ?? [];
 
     const dayMap = this.buildDayMap(days);
 
@@ -204,13 +273,75 @@ export class HolidaysService {
     return segments;
   }
 
+  private buildNewYearCountdown(
+    today: Date,
+    todayStr: string,
+    nextYearData: HolidayCnYear | null,
+  ) {
+    if (nextYearData?.days?.length) {
+      const nextYearSegments = this.getFutureOffSegments(
+        nextYearData.days,
+        todayStr,
+      );
+      const yuanDan = nextYearSegments.find((s) => s.name.includes('元旦'));
+
+      if (yuanDan) {
+        const start = this.parseYmdLocal(yuanDan.startDate);
+        const daysLeft = Math.max(
+          Math.ceil((start.getTime() - today.getTime()) / 86400000),
+          0,
+        );
+
+        return {
+          status: 'upcoming',
+          name: yuanDan.name,
+          startDate: yuanDan.startDate,
+          endDate: yuanDan.endDate,
+          days: yuanDan.days,
+          daysLeft,
+          reason: 'next_year_yuandan_from_cache_or_upstream',
+        };
+      }
+    }
+
+    const jan1 = new Date(today.getFullYear() + 1, 0, 1, 0, 0, 0, 0);
+    const daysLeft = Math.max(
+      Math.ceil((jan1.getTime() - today.getTime()) / 86400000),
+      0,
+    );
+
+    return {
+      status: 'upcoming',
+      name: '元旦',
+      startDate: this.toYmdLocal(jan1),
+      endDate: this.toYmdLocal(jan1),
+      days: 1,
+      daysLeft,
+      reason: 'fallback_to_next_jan1',
+    };
+  }
+
   // ========================= API METHODS =========================
   async getAllHolidays() {
-    const [latestHoliday, latestWeekend, latestPayday] = await Promise.all([
-      this.getLatestHoliday(),
-      this.getLatestWeekend(),
-      this.getLatestPayday(),
-    ]);
+    const [latestHolidayResult, latestWeekendResult, latestPaydayResult] =
+      await Promise.allSettled([
+        this.getLatestHoliday(),
+        this.getLatestWeekend(),
+        this.getLatestPayday(),
+      ]);
+
+    const latestHoliday =
+      latestHolidayResult.status === 'fulfilled'
+        ? latestHolidayResult.value
+        : null;
+    const latestWeekend =
+      latestWeekendResult.status === 'fulfilled'
+        ? latestWeekendResult.value
+        : null;
+    const latestPayday =
+      latestPaydayResult.status === 'fulfilled'
+        ? latestPaydayResult.value
+        : null;
 
     return {
       holidayDaysLeft:
@@ -262,30 +393,13 @@ export class HolidaysService {
       const daysAll = [...(y1?.days ?? []), ...(y2?.days ?? [])];
 
       if (daysAll.length === 0) {
-        // 两年都拿不到（网络/源不可用）
-        return {
-          status: 'unknown',
-          name: null,
-          startDate: null,
-          endDate: null,
-          days: null,
-          daysLeft: null,
-          reason: 'holiday_source_unavailable',
-        };
+        return this.buildNewYearCountdown(today, todayStr, y2);
       }
 
       const segments = this.getFutureOffSegments(daysAll, todayStr);
 
       if (segments.length === 0) {
-        // 真的没有未来 off 段（很少见，但要兜底）
-        return {
-          status: 'none',
-          name: null,
-          startDate: null,
-          endDate: null,
-          days: null,
-          daysLeft: null,
-        };
+        return this.buildNewYearCountdown(today, todayStr, y2);
       }
 
       // ongoing：今天是否在某段内
@@ -336,7 +450,8 @@ export class HolidaysService {
   async getLatestWeekend() {
     try {
       const year = this.getCurrentYear();
-      const { days } = await this.fetchHolidayYear(year);
+      const data = await this.fetchHolidayYearSafe(year);
+      const days = data?.days ?? [];
       const dayMap = this.buildDayMap(days);
 
       const todayStr = this.getChinaYmd();
@@ -413,7 +528,8 @@ export class HolidaysService {
   async getLatestPayday(day?: number) {
     try {
       const year = this.getCurrentYear();
-      const { days } = await this.fetchHolidayYear(year);
+      const data = await this.fetchHolidayYearSafe(year);
+      const days = data?.days ?? [];
       const dayMap = this.buildDayMap(days);
 
       const todayStr = this.getChinaYmd();
