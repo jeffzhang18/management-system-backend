@@ -1,14 +1,13 @@
-import { Controller, Get, ParseIntPipe, Put, Query } from '@nestjs/common';
-import { HolidaysService } from './holidays.service';
+import { Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
-import {Public} from '../../common/decorators/public.decorator'
-// import { DaysPredictionQueryDto } from './dto/days-prediction-query.dto';
-// import {HoursPredictionQueryDto} from './dto/hours-prediction-query.dto'
+import { Public } from '../../common/decorators/public.decorator';
+import { HolidaysService } from './holidays.service';
+
 
 
 @Controller('holidays')
 export class HolidaysController {
-    constructor(private readonly holidaysService: HolidaysService){}
+    constructor(private readonly holidaysService: HolidaysService) { }
 
     @Public()
     @Get()
@@ -40,13 +39,13 @@ export class HolidaysController {
     // 距离发薪日天数
     @Public()
     @ApiQuery({
-        name:"day",
-        required:false,
-        type:'Number',
-        description:'指定发薪日（当前月几号），不传默认本月最后一个工作日',
+        name: "day",
+        required: false,
+        type: 'Number',
+        description: '指定发薪日（当前月几号），不传默认本月最后一个工作日',
     })
     @Get('latest-payday')
-    getLatestPayday(@Query('day', new ParseIntPipe({ optional: true })) day?:number,) {
+    getLatestPayday(@Query('day', new ParseIntPipe({ optional: true })) day?: number,) {
         return this.holidaysService.getLatestPayday(day);
     }
 
