@@ -66,6 +66,9 @@ export class UserService {
     if (payload.country !== undefined) {
       user.country = payload.country;
     }
+    if (payload.city !== undefined) {
+      user.city = payload.city;
+    }
     if (payload.contact !== undefined) {
       user.contact = payload.contact;
     }
