@@ -40,6 +40,12 @@ export class UpdateUserProfileDto {
   @MaxLength(100)
   country?: string;
 
+  @ApiPropertyOptional({ description: '城市', example: 'Shanghai' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string;
+
   @ApiPropertyOptional({ description: '联系方式', example: '+86-13800138000' })
   @IsOptional()
   @IsString()
