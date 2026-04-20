@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class UpdateUserProfileDto {
   @ApiPropertyOptional({ description: '昵称', example: 'Alice' })
@@ -60,4 +66,9 @@ export class UpdateUserProfileDto {
   @IsString()
   @MaxLength(500)
   about?: string;
+
+  @ApiPropertyOptional({ description: '是否公开个人资料', example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }

@@ -22,7 +22,12 @@ export class UserService {
     return bcrypt.compare(password, user.password);
   }
 
-  async createUser(email: string, userName: string, password: string) {
+  async createUser(
+    email: string,
+    userName: string,
+    password: string,
+    isPublic = true,
+  ) {
     const existing = await this.findByEmail(email);
     if (existing) {
       throw new ConflictException('Email already exists');
@@ -35,7 +40,8 @@ export class UserService {
       user_id: randomUUID(),
       user_name: userName,
       password: hash,
-      role: ['user'], // 默认角色
+      role: ['user'],
+      isPublic,
     });
 
     return this.userRepository.save(user);
@@ -74,6 +80,9 @@ export class UserService {
     }
     if (payload.about !== undefined) {
       user.about = payload.about;
+    }
+    if (payload.isPublic !== undefined) {
+      user.isPublic = payload.isPublic;
     }
 
     const saved = await this.userRepository.save(user);
