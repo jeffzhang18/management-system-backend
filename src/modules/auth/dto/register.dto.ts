@@ -1,6 +1,7 @@
 // auth/dto/register.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'test@test.com' })
@@ -17,5 +18,8 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
-  
+  @ApiPropertyOptional({ example: true, description: '是否公开个人资料' })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }

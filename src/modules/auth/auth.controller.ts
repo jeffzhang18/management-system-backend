@@ -39,6 +39,7 @@ export class AuthController {
       body.email,
       body.userName,
       body.password,
+      body.isPublic,
     );
 
     // 注册成功后直接登录（可选，但很常见）
@@ -46,8 +47,15 @@ export class AuthController {
   }
 
   @Get('profile')
-  getProfile(@User() user) {
-    return user;
+  async getProfile(@User('email') email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { password, ...safeUser } = user;
+    return safeUser;
   }
 
   @Post('revoke-access-token')

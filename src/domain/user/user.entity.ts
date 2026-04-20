@@ -43,4 +43,7 @@ export class User {
 
   @Column({ nullable: true })
   city: string;
+
+  @Column({ name: 'is_public', type: 'bool', default: true })
+  isPublic: boolean;
 }
