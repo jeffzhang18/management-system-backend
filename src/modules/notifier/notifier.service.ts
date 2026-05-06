@@ -181,7 +181,7 @@ export class NotifierService {
       `日期提醒 \n` +
       `${paydayText}\n` +
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
-      `- 距离星期六：${holidayData?.weekendDaysLeft ?? '-'} 天`;
+      `- 距离休息日：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
     await this.sendWechatMessage(text);
     console.log(now);
