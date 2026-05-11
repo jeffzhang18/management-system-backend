@@ -211,6 +211,7 @@ export class NotifierService {
     await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', WECHAT_WEBHOOK_9AM);
   }
 
+  
   @Cron(CronExpression.EVERY_DAY_AT_5PM, {
     timeZone: 'Asia/Shanghai',
   })
