@@ -1,10 +1,10 @@
 // src/modules/notifier/notifier.service.ts
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import axios from 'axios';
 import { HolidaysService } from '../holidays/holidays.service';
 import { WeatherService } from '../weather/weather.service';
-import axios from 'axios';
-import { NORMAL_MESSAGES, FRIDAY_MESSAGES } from './assets/message';
+import { FRIDAY_MESSAGES, NORMAL_MESSAGES } from './assets/message';
 
 @Injectable()
 export class NotifierService {
@@ -17,7 +17,7 @@ export class NotifierService {
   constructor(
     private readonly holidaysService: HolidaysService,
     private readonly weatherService: WeatherService,
-  ) {}
+  ) { }
 
   /** 按中文天气关键字匹配一个图标 */
   private iconByWeather(w?: string) {
@@ -38,8 +38,7 @@ export class NotifierService {
     return '🌤️';
   }
 
-  private async sendWechatMessage(content: string) {
-    const webhookUrl = process.env.WECHAT_WEBHOOK;
+  private async sendWechatMessage(content: string, webhookUrl = process.env.WECHAT_WEBHOOK) {
 
     if (!webhookUrl) {
       console.warn('[Notifier] WECHAT_WEBHOOK is empty, skip wechat push');
@@ -89,7 +88,7 @@ export class NotifierService {
   @Cron('0 50 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
-  async handleDailyReminder() {
+  async handleDailyReminder(webhookUrl = process.env.WECHAT_WEBHOOK) {
     if (this.shouldSkipCronInDev()) {
       console.log('[Notifier] running in start:dev, skip cron task');
       return;
@@ -183,11 +182,18 @@ export class NotifierService {
       `- 距离${holidayData?.holidayDaysName ?? '下个假期'}：${holidayData?.holidayDaysLeft ?? '-'} 天\n` +
       `- 距离休息日：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
-      
-    await this.sendWechatMessage(text);
+
+    await this.sendWechatMessage(text, webhookUrl);
     console.log(now);
     console.log(text);
     return text;
+  }
+
+  @Cron('0 0 15 * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async handleDailyReminderForAnotherGroup() {
+    await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', process.env.WECHAT_WEBHOOK_9AM);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_5PM, {
