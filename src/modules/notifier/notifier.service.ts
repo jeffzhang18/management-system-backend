@@ -193,6 +193,16 @@ export class NotifierService {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminderForAnotherGroup() {
+    if (this.shouldSkipCronInDev()) {
+      console.log('[Notifier] running in start:dev, skip cron task');
+      return;
+    }
+
+    const isOffDay = await this.holidaysService.isTodayOffDay();
+    if (isOffDay) {
+      console.log('[Notifier] today is off day, skip reminder');
+      return;
+    }
     await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', process.env.WECHAT_WEBHOOK_9AM);
   }
 
