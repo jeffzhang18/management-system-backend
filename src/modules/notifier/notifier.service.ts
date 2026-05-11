@@ -6,11 +6,6 @@ import { HolidaysService } from '../holidays/holidays.service';
 import { WeatherService } from '../weather/weather.service';
 import { FRIDAY_MESSAGES, NORMAL_MESSAGES } from './assets/message';
 
-// 群聊无领导的 webhook，安全性较低，请勿泄露
-const WECHAT_WEBHOOK = process.env.WECHAT_WEBHOOK
-// 成本统计提醒的 webhook，和上面的区分开，避免互相干扰
-const WECHAT_WEBHOOK_9AM = process.env.WECHAT_WEBHOOK_9AM;
-
 @Injectable()
 export class NotifierService {
   private readonly lifecycleEvent = process.env.npm_lifecycle_event;
@@ -188,7 +183,7 @@ export class NotifierService {
       `- 距离休息日：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
 
-    await this.sendWechatMessage(text, WECHAT_WEBHOOK);
+    await this.sendWechatMessage(text, process.env.WECHAT_WEBHOOK);
     console.log(now);
     console.log(text);
     return text;
@@ -208,7 +203,11 @@ export class NotifierService {
       console.log('[Notifier] today is off day, skip reminder');
       return;
     }
-    await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', WECHAT_WEBHOOK_9AM);
+    await this.sendWechatMessage(
+      '请完成成本记录\n' +
+        'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource',
+      process.env.WECHAT_WEBHOOK_9AM,
+    );
   }
 
   
@@ -240,7 +239,7 @@ export class NotifierService {
       const content = this.pickDailyMessage(now, pool);
       console.log(content);
 
-      await this.sendWechatMessage(content, WECHAT_WEBHOOK);
+      await this.sendWechatMessage(content, process.env.WECHAT_WEBHOOK);
     } catch (e) {
       console.error('[Cron] GetOff reminder failed', e);
     }
