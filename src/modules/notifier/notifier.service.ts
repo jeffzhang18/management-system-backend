@@ -189,7 +189,7 @@ export class NotifierService {
     return text;
   }
 
-  @Cron('0 30 15 * * *', {
+  @Cron('0 05 9 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminderForAnotherGroup() {
