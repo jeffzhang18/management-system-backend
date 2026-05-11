@@ -6,6 +6,11 @@ import { HolidaysService } from '../holidays/holidays.service';
 import { WeatherService } from '../weather/weather.service';
 import { FRIDAY_MESSAGES, NORMAL_MESSAGES } from './assets/message';
 
+// 群聊无领导的 webhook，安全性较低，请勿泄露
+const WECHAT_WEBHOOK = process.env.WECHAT_WEBHOOK
+// 成本统计提醒的 webhook，和上面的区分开，避免互相干扰
+const WECHAT_WEBHOOK_9AM = process.env.WECHAT_WEBHOOK_9AM;
+
 @Injectable()
 export class NotifierService {
   private readonly lifecycleEvent = process.env.npm_lifecycle_event;
@@ -38,7 +43,7 @@ export class NotifierService {
     return '🌤️';
   }
 
-  private async sendWechatMessage(content: string, webhookUrl = process.env.WECHAT_WEBHOOK) {
+  private async sendWechatMessage(content: string, webhookUrl?: string) {
 
     if (!webhookUrl) {
       console.warn('[Notifier] WECHAT_WEBHOOK is empty, skip wechat push');
@@ -183,13 +188,13 @@ export class NotifierService {
       `- 距离休息日：${holidayData?.weekendDaysLeft ?? '-'} 天`;
 
 
-    await this.sendWechatMessage(text, webhookUrl);
+    await this.sendWechatMessage(text, WECHAT_WEBHOOK);
     console.log(now);
     console.log(text);
     return text;
   }
 
-  @Cron('0 0 15 * * *', {
+  @Cron('0 20 15 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminderForAnotherGroup() {
@@ -203,7 +208,7 @@ export class NotifierService {
       console.log('[Notifier] today is off day, skip reminder');
       return;
     }
-    await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', process.env.WECHAT_WEBHOOK_9AM);
+    await this.sendWechatMessage('请完成成本记录\n' + 'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource', WECHAT_WEBHOOK_9AM);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_5PM, {
@@ -234,7 +239,7 @@ export class NotifierService {
       const content = this.pickDailyMessage(now, pool);
       console.log(content);
 
-      await this.sendWechatMessage(content);
+      await this.sendWechatMessage(content, WECHAT_WEBHOOK);
     } catch (e) {
       console.error('[Cron] GetOff reminder failed', e);
     }
