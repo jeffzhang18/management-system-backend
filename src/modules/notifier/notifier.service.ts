@@ -189,7 +189,7 @@ export class NotifierService {
     return text;
   }
 
-  @Cron('0 05 9 * * *', {
+  @Cron('0 35 14 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async handleDailyReminderForAnotherGroup() {
@@ -203,9 +203,19 @@ export class NotifierService {
       console.log('[Notifier] today is off day, skip reminder');
       return;
     }
+    const now = new Date(
+      new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+    );
+    const dateLine = `${now.getMonth() + 1}月${now.getDate()}日`;
     await this.sendWechatMessage(
-      '请完成成本记录\n' +
-        'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource',
+      `${dateLine}成本记录\n` +
+      'Azure:\n'+
+      'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource'+
+      '豆包:\n'+
+      'https://console.volcengine.com/finance/bill/cost-analyse'+
+      '文档:\n'+
+      'https://doc.weixin.qq.com/sheet/e3_AW4ATAYGAOECNLgYOUE80T4uOLLMK?scode=AH0AnQcXAAsTxzIFCNAVkATwadAA4&version=5.0.8.6009&platform=win&tab=t653gm'
+      ,
       process.env.WECHAT_WEBHOOK_9AM,
     );
   }
