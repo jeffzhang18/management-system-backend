@@ -211,9 +211,9 @@ export class NotifierService {
       `${dateLine}成本记录\n` +
       'Azure:\n'+
       'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource'+
-      '豆包:\n'+
+      '\n豆包:\n'+
       'https://console.volcengine.com/finance/bill/cost-analyse'+
-      '文档:\n'+
+      '\n文档:\n'+
       'https://doc.weixin.qq.com/sheet/e3_AW4ATAYGAOECNLgYOUE80T4uOLLMK?scode=AH0AnQcXAAsTxzIFCNAVkATwadAA4&version=5.0.8.6009&platform=win&tab=t653gm'
       ,
       process.env.WECHAT_WEBHOOK_9AM,
