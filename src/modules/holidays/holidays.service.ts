@@ -343,14 +343,23 @@ export class HolidaysService {
         ? latestPaydayResult.value
         : null;
 
+    const holidayDaysLeft =
+      latestHoliday?.status === 'upcoming' ? latestHoliday.daysLeft : null;
+    const weekendDaysLeft =
+      latestWeekend?.status === 'upcoming' ? latestWeekend.daysLeft : null;
+    const adjustedWeekendDaysLeft =
+      holidayDaysLeft != null &&
+      weekendDaysLeft != null &&
+      holidayDaysLeft <= weekendDaysLeft
+        ? holidayDaysLeft
+        : weekendDaysLeft;
+
     return {
-      holidayDaysLeft:
-        latestHoliday?.status === 'upcoming' ? latestHoliday.daysLeft : null,
+      holidayDaysLeft,
       holidayDaysName:
         latestHoliday?.status === 'upcoming' ? latestHoliday.name : null,
 
-      weekendDaysLeft:
-        latestWeekend?.status === 'upcoming' ? latestWeekend.daysLeft : null,
+      weekendDaysLeft: adjustedWeekendDaysLeft,
 
       paydayDaysLeft: latestPayday?.daysLeft ?? null,
 
