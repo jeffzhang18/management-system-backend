@@ -343,6 +343,7 @@ export class HolidaysService {
         ? latestPaydayResult.value
         : null;
 
+        
     const holidayDaysLeft =
       latestHoliday?.status === 'upcoming' ? latestHoliday.daysLeft : null;
     const weekendDaysLeft =
