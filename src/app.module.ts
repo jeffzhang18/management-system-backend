@@ -10,6 +10,7 @@ import { UserModule } from './domain/user/user.model';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotifierModule } from './modules/notifier/notifier.module';
 import { SysModule } from './modules/sys/sys.module';
+import { GameModule } from './modules/game/game.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -39,6 +40,7 @@ import { WsModule } from './ws/ws.module';
     HolidaysModule,
     AuthModule,
     NotifierModule,
+    GameModule,
     SysModule,
     ApiCallLogModule,
     WsModule,
