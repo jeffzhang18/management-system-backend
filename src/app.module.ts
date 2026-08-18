@@ -11,6 +11,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NotifierModule } from './modules/notifier/notifier.module';
 import { SysModule } from './modules/sys/sys.module';
 import { GameModule } from './modules/game/game.module';
+import { WorkRecordsModule } from './modules/work-records/work-records.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -41,6 +42,7 @@ import { WsModule } from './ws/ws.module';
     AuthModule,
     NotifierModule,
     GameModule,
+    WorkRecordsModule,
     SysModule,
     ApiCallLogModule,
     WsModule,
@@ -60,3 +62,5 @@ import { WsModule } from './ws/ws.module';
   ],
 })
 export class AppModule {}
+
+
