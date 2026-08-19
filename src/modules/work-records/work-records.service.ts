@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { CreateWorkRecordDto } from './dto/create-work-record.dto';
+import { CreateWorkRecordThemeDto } from './dto/create-work-record-theme.dto';
 import { ExportWorkRecordsQueryDto } from './dto/export-work-records-query.dto';
 import { ImportWorkRecordsDto } from './dto/import-work-records.dto';
 import { PatchWorkRecordDto } from './dto/patch-work-record.dto';
@@ -15,6 +16,15 @@ import { WorkRecord } from './entities/work-record.entity';
 import { WorkRecordTheme } from './entities/work-record-theme.entity';
 
 type ExportFormat = 'txt' | 'json' | 'pdf';
+
+type ThemeDetail = {
+  id: number;
+  themeKey: string;
+  themeName: string;
+  color: string;
+  isSystem: boolean;
+  sortNo: number;
+};
 
 type RecordDetail = {
   id: number;
@@ -43,7 +53,45 @@ export class WorkRecordsService {
     @InjectRepository(WorkRecordTheme)
     private readonly workRecordThemeRepository: Repository<WorkRecordTheme>,
   ) {}
+  async getThemeList(userIdInput: number | string): Promise<ThemeDetail[]> {
+    const userId = this.normalizeUserId(userIdInput);
 
+    const themes = await this.workRecordThemeRepository
+      .createQueryBuilder('theme')
+      .where('theme.owner_user_id = :userId AND theme.is_system = false', {
+        userId,
+      })
+      .orWhere('theme.owner_user_id = 0 AND theme.is_system = true')
+      .orderBy('theme.is_system', 'ASC')
+      .addOrderBy('theme.sort_no', 'ASC')
+      .addOrderBy('theme.id', 'ASC')
+      .getMany();
+
+    return themes.map((theme) => this.mapThemeDetail(theme));
+  }
+
+  async createTheme(
+    userIdInput: number | string,
+    payload: CreateWorkRecordThemeDto,
+  ): Promise<ThemeDetail> {
+    const userId = this.normalizeUserId(userIdInput);
+    const themeName = this.normalizeThemeName(payload?.themeName);
+    const color = this.normalizeColor(payload?.color);
+    const themeKey = await this.resolveThemeKeyForCreate(userId, payload);
+    const sortNo = await this.resolveSortNoForCreate(userId, payload?.sortNo);
+
+    const entity = this.workRecordThemeRepository.create({
+      owner_user_id: userId,
+      theme_key: themeKey,
+      theme_name: themeName,
+      color,
+      is_system: false,
+      sort_no: sortNo,
+    });
+
+    const saved = await this.workRecordThemeRepository.save(entity);
+    return this.mapThemeDetail(saved);
+  }
   async getCalendarSummary(
     userIdInput: number | string,
     startDateInput: string,
@@ -403,6 +451,137 @@ export class WorkRecordsService {
     }
   }
 
+  private mapThemeDetail(theme: WorkRecordTheme): ThemeDetail {
+    return {
+      id: Number(theme.id),
+      themeKey: theme.theme_key,
+      themeName: theme.theme_name,
+      color: theme.color,
+      isSystem: !!theme.is_system,
+      sortNo: Number(theme.sort_no || 0),
+    };
+  }
+
+  private normalizeThemeName(value: unknown): string {
+    if (typeof value !== 'string') {
+      throw new BadRequestException('themeName must be a string');
+    }
+
+    const themeName = value.trim();
+    if (!themeName) {
+      throw new BadRequestException('themeName cannot be empty');
+    }
+
+    if (themeName.length > 50) {
+      throw new BadRequestException('themeName cannot exceed 50 characters');
+    }
+
+    return themeName;
+  }
+
+  private normalizeColor(value: unknown): string {
+    if (typeof value !== 'string') {
+      throw new BadRequestException('color must be a string');
+    }
+
+    const color = value.trim();
+    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      throw new BadRequestException('color must follow #RRGGBB format');
+    }
+
+    return color.toUpperCase();
+  }
+
+  private normalizeThemeKey(value: unknown): string {
+    if (typeof value !== 'string') {
+      throw new BadRequestException('themeKey must be a string');
+    }
+
+    const themeKey = value.trim().toLowerCase();
+    if (!themeKey) {
+      throw new BadRequestException('themeKey cannot be empty');
+    }
+
+    if (themeKey.length > 64) {
+      throw new BadRequestException('themeKey cannot exceed 64 characters');
+    }
+
+    if (!/^[a-z0-9][a-z0-9-_]*$/.test(themeKey)) {
+      throw new BadRequestException(
+        'themeKey only allows lowercase letters, numbers, hyphen and underscore',
+      );
+    }
+
+    return themeKey;
+  }
+
+  private async resolveThemeKeyForCreate(
+    userId: number,
+    payload: CreateWorkRecordThemeDto,
+  ) {
+    if (payload?.themeKey !== undefined && payload.themeKey !== null && payload.themeKey !== '') {
+      const candidate = this.normalizeThemeKey(payload.themeKey);
+      const duplicated = await this.workRecordThemeRepository.exists({
+        where: {
+          owner_user_id: userId,
+          theme_key: candidate,
+        },
+      });
+
+      if (duplicated) {
+        throw new BadRequestException('themeKey already exists for current user');
+      }
+
+      return candidate;
+    }
+
+    const base = this.normalizeThemeName(payload?.themeName)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'theme';
+
+    let index = 0;
+    while (index < 9999) {
+      const suffix = index === 0 ? '' : `-${index + 1}`;
+      const candidate = `${base}${suffix}`;
+      const duplicated = await this.workRecordThemeRepository.exists({
+        where: {
+          owner_user_id: userId,
+          theme_key: candidate,
+        },
+      });
+
+      if (!duplicated) {
+        return candidate;
+      }
+
+      index += 1;
+    }
+
+    throw new BadRequestException('Unable to generate unique themeKey');
+  }
+
+  private async resolveSortNoForCreate(userId: number, inputSortNo: unknown) {
+    if (inputSortNo === undefined || inputSortNo === null || inputSortNo === '') {
+      const row = await this.workRecordThemeRepository
+        .createQueryBuilder('theme')
+        .select('COALESCE(MAX(theme.sort_no), 0)', 'maxSortNo')
+        .where('theme.owner_user_id = :userId AND theme.is_system = false', {
+          userId,
+        })
+        .getRawOne<{ maxSortNo: string }>();
+
+      return Number(row?.maxSortNo ?? 0) + 1;
+    }
+
+    const sortNo = Number(inputSortNo);
+    if (!Number.isInteger(sortNo)) {
+      throw new BadRequestException('sortNo must be an integer');
+    }
+
+    return sortNo;
+  }
   private normalizeTitle(value: unknown): string {
     if (typeof value !== 'string') {
       throw new BadRequestException('title must be a string');
@@ -767,3 +946,6 @@ export class WorkRecordsService {
     return Buffer.from(pdf, 'ascii');
   }
 }
+
+
+

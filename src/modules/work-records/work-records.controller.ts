@@ -22,6 +22,7 @@ import type { Response } from 'express';
 import { User } from '../../common/decorators/user.decorator';
 import { CalendarRangeQueryDto } from './dto/calendar-range-query.dto';
 import { CreateWorkRecordDto } from './dto/create-work-record.dto';
+import { CreateWorkRecordThemeDto } from './dto/create-work-record-theme.dto';
 import { ExportWorkRecordsQueryDto } from './dto/export-work-records-query.dto';
 import { ImportWorkRecordsDto } from './dto/import-work-records.dto';
 import { PatchWorkRecordDto } from './dto/patch-work-record.dto';
@@ -63,6 +64,27 @@ export class WorkRecordsController {
     return this.workRecordsService.getRecordsByDate(userId, query.date);
   }
 
+  @ApiOperation({
+    summary: '查询主题列表',
+    description: '返回系统主题 + 当前用户自定义主题。',
+  })
+  @Get('themes')
+  getThemeList(@User('userId') userId: number) {
+    return this.workRecordsService.getThemeList(userId);
+  }
+
+  @ApiOperation({
+    summary: '创建主题',
+    description: '创建当前用户的自定义主题。',
+  })
+  @ApiBody({ type: CreateWorkRecordThemeDto })
+  @Post('themes')
+  createTheme(
+    @User('userId') userId: number,
+    @Body() body: CreateWorkRecordThemeDto,
+  ) {
+    return this.workRecordsService.createTheme(userId, body);
+  }
   @ApiOperation({
     summary: '按日期范围导出记录',
     description: '支持 txt、json、pdf 三种格式导出。',
@@ -149,3 +171,4 @@ export class WorkRecordsController {
     return this.workRecordsService.deleteRecord(userId, id);
   }
 }
+
