@@ -144,7 +144,7 @@ export class WorkRecordsService {
 
     const rows = await this.workRecordRepository
       .createQueryBuilder('record')
-      .select('record.record_date', 'date')
+      .select('record.record_date::text', 'date')
       .addSelect('COUNT(record.id)', 'records')
       .where('record.user_id = :userId', { userId })
       .andWhere('record.deleted_at IS NULL')

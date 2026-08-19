@@ -54,6 +54,10 @@ describe('WorkRecordsService contributions', () => {
 
     await service.getContributions('42', '2026');
 
+    expect(queryBuilder.select).toHaveBeenCalledWith(
+      'record.record_date::text',
+      'date',
+    );
     expect(queryBuilder.where).toHaveBeenCalledWith(
       'record.user_id = :userId',
       { userId: 42 },
