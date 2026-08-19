@@ -45,6 +45,15 @@ type RecordDetail = {
   } | null;
 };
 
+type ContributionDay = {
+  date: string;
+  records: number;
+  level: 0 | 1 | 2 | 3 | 4;
+};
+
+const CONTRIBUTION_DAYS = 365;
+const BUSINESS_TIME_ZONE = 'Asia/Shanghai';
+
 @Injectable()
 export class WorkRecordsService {
   constructor(
@@ -126,6 +135,43 @@ export class WorkRecordsService {
     }));
   }
 
+  async getContributions(
+    userIdInput: number | string,
+  ): Promise<ContributionDay[]> {
+    const userId = this.normalizeUserId(userIdInput);
+    const endDate = this.getBusinessDate();
+    const startDate = this.shiftDate(endDate, -(CONTRIBUTION_DAYS - 1));
+
+    const rows = await this.workRecordRepository
+      .createQueryBuilder('record')
+      .select('record.record_date', 'date')
+      .addSelect('COUNT(record.id)', 'records')
+      .where('record.user_id = :userId', { userId })
+      .andWhere('record.deleted_at IS NULL')
+      .andWhere('record.record_date BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .groupBy('record.record_date')
+      .orderBy('record.record_date', 'ASC')
+      .getRawMany<{ date: string; records: string }>();
+
+    const recordCountByDate = new Map(
+      rows.map((row) => [row.date, Number(row.records)]),
+    );
+
+    return Array.from({ length: CONTRIBUTION_DAYS }, (_, index) => {
+      const date = this.shiftDate(startDate, index);
+      const records = recordCountByDate.get(date) ?? 0;
+
+      return {
+        date,
+        records,
+        level: this.getContributionLevel(records),
+      };
+    });
+  }
+
   async getRecordsByDate(userIdInput: number | string, dateInput: string) {
     const userId = this.normalizeUserId(userIdInput);
     const date = this.normalizeDate(dateInput, 'date');
@@ -143,7 +189,10 @@ export class WorkRecordsService {
     return records.map((record) => this.mapRecordDetail(record));
   }
 
-  async getRecordDetail(userIdInput: number | string, idInput: string | number) {
+  async getRecordDetail(
+    userIdInput: number | string,
+    idInput: string | number,
+  ) {
     const userId = this.normalizeUserId(userIdInput);
     const recordId = this.normalizeNumericId(idInput, 'id');
 
@@ -164,11 +213,17 @@ export class WorkRecordsService {
         ? undefined
         : this.normalizeNumericId(payload.themeId, 'themeId');
 
-    const startTime = this.normalizeOptionalTime(payload?.startTime, 'startTime');
+    const startTime = this.normalizeOptionalTime(
+      payload?.startTime,
+      'startTime',
+    );
     const endTime = this.normalizeOptionalTime(payload?.endTime, 'endTime');
     this.ensureTimeRange(startTime, endTime);
 
-    const contentMd = this.normalizeNullableText(payload?.contentMd, 'contentMd');
+    const contentMd = this.normalizeNullableText(
+      payload?.contentMd,
+      'contentMd',
+    );
     const theme = await this.resolveThemeForUser(userId, themeId);
 
     const entity = this.workRecordRepository.create({
@@ -210,11 +265,17 @@ export class WorkRecordsService {
     const themeId = this.normalizeNumericId(payload.themeId, 'themeId');
     const theme = await this.resolveThemeForUser(userId, themeId);
 
-    const startTime = this.normalizeOptionalTime(payload.startTime, 'startTime');
+    const startTime = this.normalizeOptionalTime(
+      payload.startTime,
+      'startTime',
+    );
     const endTime = this.normalizeOptionalTime(payload.endTime, 'endTime');
     this.ensureTimeRange(startTime, endTime);
 
-    const contentMd = this.normalizeNullableText(payload.contentMd, 'contentMd');
+    const contentMd = this.normalizeNullableText(
+      payload.contentMd,
+      'contentMd',
+    );
 
     record.record_date = recordDate;
     record.title = title;
@@ -268,10 +329,16 @@ export class WorkRecordsService {
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'contentMd')) {
-      record.content_md = this.normalizeNullableText(payload.contentMd, 'contentMd');
+      record.content_md = this.normalizeNullableText(
+        payload.contentMd,
+        'contentMd',
+      );
     }
 
-    const hasStartTime = Object.prototype.hasOwnProperty.call(payload, 'startTime');
+    const hasStartTime = Object.prototype.hasOwnProperty.call(
+      payload,
+      'startTime',
+    );
     const hasEndTime = Object.prototype.hasOwnProperty.call(payload, 'endTime');
 
     if (hasStartTime || hasEndTime) {
@@ -417,6 +484,34 @@ export class WorkRecordsService {
     return userId;
   }
 
+  private getBusinessDate(): string {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: BUSINESS_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(
+      parts.map((part) => [part.type, part.value]),
+    );
+
+    return `${values.year}-${values.month}-${values.day}`;
+  }
+
+  private shiftDate(date: string, days: number): string {
+    const shifted = new Date(`${date}T00:00:00Z`);
+    shifted.setUTCDate(shifted.getUTCDate() + days);
+    return shifted.toISOString().slice(0, 10);
+  }
+
+  private getContributionLevel(records: number): 0 | 1 | 2 | 3 | 4 {
+    if (records === 0) return 0;
+    if (records === 1) return 1;
+    if (records <= 3) return 2;
+    if (records <= 6) return 3;
+    return 4;
+  }
+
   private normalizeNumericId(value: unknown, fieldName: string): number {
     const id = Number(value);
     if (!Number.isInteger(id) || id <= 0) {
@@ -519,7 +614,11 @@ export class WorkRecordsService {
     userId: number,
     payload: CreateWorkRecordThemeDto,
   ) {
-    if (payload?.themeKey !== undefined && payload.themeKey !== null && payload.themeKey !== '') {
+    if (
+      payload?.themeKey !== undefined &&
+      payload.themeKey !== null &&
+      payload.themeKey !== ''
+    ) {
       const candidate = this.normalizeThemeKey(payload.themeKey);
       const duplicated = await this.workRecordThemeRepository.exists({
         where: {
@@ -529,17 +628,20 @@ export class WorkRecordsService {
       });
 
       if (duplicated) {
-        throw new BadRequestException('themeKey already exists for current user');
+        throw new BadRequestException(
+          'themeKey already exists for current user',
+        );
       }
 
       return candidate;
     }
 
-    const base = this.normalizeThemeName(payload?.themeName)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40) || 'theme';
+    const base =
+      this.normalizeThemeName(payload?.themeName)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40) || 'theme';
 
     let index = 0;
     while (index < 9999) {
@@ -563,7 +665,11 @@ export class WorkRecordsService {
   }
 
   private async resolveSortNoForCreate(userId: number, inputSortNo: unknown) {
-    if (inputSortNo === undefined || inputSortNo === null || inputSortNo === '') {
+    if (
+      inputSortNo === undefined ||
+      inputSortNo === null ||
+      inputSortNo === ''
+    ) {
       const row = await this.workRecordThemeRepository
         .createQueryBuilder('theme')
         .select('COALESCE(MAX(theme.sort_no), 0)', 'maxSortNo')
@@ -599,7 +705,10 @@ export class WorkRecordsService {
     return title;
   }
 
-  private normalizeOptionalTime(value: unknown, fieldName: string): string | null {
+  private normalizeOptionalTime(
+    value: unknown,
+    fieldName: string,
+  ): string | null {
     if (value === undefined || value === null) {
       return null;
     }
@@ -661,7 +770,10 @@ export class WorkRecordsService {
     }
   }
 
-  private normalizeNullableText(value: unknown, fieldName: string): string | null {
+  private normalizeNullableText(
+    value: unknown,
+    fieldName: string,
+  ): string | null {
     if (value === undefined || value === null) {
       return null;
     }
@@ -673,7 +785,10 @@ export class WorkRecordsService {
     return value;
   }
 
-  private async findActiveRecord(userId: number, id: number): Promise<WorkRecord> {
+  private async findActiveRecord(
+    userId: number,
+    id: number,
+  ): Promise<WorkRecord> {
     const record = await this.workRecordRepository.findOne({
       where: {
         id,
@@ -920,8 +1035,7 @@ export class WorkRecordsService {
         `<< /Length ${length} >>\nstream\n${streamContent}\nendstream`;
     });
 
-    objects[2] =
-      `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${contentStreams.length} >>`;
+    objects[2] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${contentStreams.length} >>`;
 
     const objectCount = objects.length - 1;
     let pdf = '%PDF-1.4\n';
@@ -946,6 +1060,3 @@ export class WorkRecordsService {
     return Buffer.from(pdf, 'ascii');
   }
 }
-
-
-

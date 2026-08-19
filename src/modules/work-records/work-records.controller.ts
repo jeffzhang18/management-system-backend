@@ -53,6 +53,16 @@ export class WorkRecordsController {
   }
 
   @ApiOperation({
+    summary: '查询近一年每日工作强度',
+    description:
+      '返回今天及向前 364 天的每日记录数量和五级工作强度，按日期升序排列。',
+  })
+  @Get('contributions')
+  getContributions(@User('userId') userId: number) {
+    return this.workRecordsService.getContributions(userId);
+  }
+
+  @ApiOperation({
     summary: '按日期查询记录列表',
     description: '查询某一天的全部工作记录。',
   })
@@ -139,7 +149,10 @@ export class WorkRecordsController {
   })
   @ApiBody({ type: CreateWorkRecordDto })
   @Post()
-  createRecord(@User('userId') userId: number, @Body() body: CreateWorkRecordDto) {
+  createRecord(
+    @User('userId') userId: number,
+    @Body() body: CreateWorkRecordDto,
+  ) {
     return this.workRecordsService.createRecord(userId, body);
   }
 
@@ -171,4 +184,3 @@ export class WorkRecordsController {
     return this.workRecordsService.deleteRecord(userId, id);
   }
 }
-
