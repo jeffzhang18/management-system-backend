@@ -51,9 +51,6 @@ type ContributionDay = {
   level: 0 | 1 | 2 | 3 | 4;
 };
 
-const CONTRIBUTION_DAYS = 365;
-const BUSINESS_TIME_ZONE = 'Asia/Shanghai';
-
 @Injectable()
 export class WorkRecordsService {
   constructor(
@@ -137,10 +134,13 @@ export class WorkRecordsService {
 
   async getContributions(
     userIdInput: number | string,
+    yearInput: number | string,
   ): Promise<ContributionDay[]> {
     const userId = this.normalizeUserId(userIdInput);
-    const endDate = this.getBusinessDate();
-    const startDate = this.shiftDate(endDate, -(CONTRIBUTION_DAYS - 1));
+    const year = this.normalizeContributionYear(yearInput);
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+    const contributionDays = this.isLeapYear(year) ? 366 : 365;
 
     const rows = await this.workRecordRepository
       .createQueryBuilder('record')
@@ -160,7 +160,7 @@ export class WorkRecordsService {
       rows.map((row) => [row.date, Number(row.records)]),
     );
 
-    return Array.from({ length: CONTRIBUTION_DAYS }, (_, index) => {
+    return Array.from({ length: contributionDays }, (_, index) => {
       const date = this.shiftDate(startDate, index);
       const records = recordCountByDate.get(date) ?? 0;
 
@@ -484,18 +484,22 @@ export class WorkRecordsService {
     return userId;
   }
 
-  private getBusinessDate(): string {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: BUSINESS_TIME_ZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(new Date());
-    const values = Object.fromEntries(
-      parts.map((part) => [part.type, part.value]),
-    );
+  private normalizeContributionYear(value: number | string): number {
+    const normalized = String(value ?? '').trim();
+    if (!/^\d{4}$/.test(normalized)) {
+      throw new BadRequestException('year must be a four-digit year');
+    }
 
-    return `${values.year}-${values.month}-${values.day}`;
+    const year = Number(normalized);
+    if (year < 1) {
+      throw new BadRequestException('year must be a four-digit year');
+    }
+
+    return year;
+  }
+
+  private isLeapYear(year: number): boolean {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   }
 
   private shiftDate(date: string, days: number): string {

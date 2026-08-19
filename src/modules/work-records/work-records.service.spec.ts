@@ -21,31 +21,26 @@ describe('WorkRecordsService contributions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers().setSystemTime(new Date('2026-08-19T08:00:00Z'));
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it('returns 365 days, fills missing dates and maps all five levels', async () => {
+  it('returns a full year, fills missing dates and maps all five levels', async () => {
     queryBuilder.getRawMany.mockResolvedValue([
-      { date: '2025-08-20', records: '1' },
+      { date: '2026-01-01', records: '1' },
       { date: '2026-08-15', records: '2' },
       { date: '2026-08-16', records: '4' },
       { date: '2026-08-17', records: '7' },
     ]);
 
-    const result = await service.getContributions(12);
+    const result = await service.getContributions(12, 2026);
 
     expect(result).toHaveLength(365);
     expect(result[0]).toEqual({
-      date: '2025-08-20',
+      date: '2026-01-01',
       records: 1,
       level: 1,
     });
     expect(result.at(-1)).toEqual({
-      date: '2026-08-19',
+      date: '2026-12-31',
       records: 0,
       level: 0,
     });
@@ -57,7 +52,7 @@ describe('WorkRecordsService contributions', () => {
   it('queries only active records for the current user and date range', async () => {
     queryBuilder.getRawMany.mockResolvedValue([]);
 
-    await service.getContributions('42');
+    await service.getContributions('42', '2026');
 
     expect(queryBuilder.where).toHaveBeenCalledWith(
       'record.user_id = :userId',
@@ -68,7 +63,24 @@ describe('WorkRecordsService contributions', () => {
     );
     expect(queryBuilder.andWhere).toHaveBeenCalledWith(
       'record.record_date BETWEEN :startDate AND :endDate',
-      { startDate: '2025-08-20', endDate: '2026-08-19' },
+      { startDate: '2026-01-01', endDate: '2026-12-31' },
+    );
+  });
+
+  it('returns 366 days for a leap year', async () => {
+    queryBuilder.getRawMany.mockResolvedValue([]);
+
+    const result = await service.getContributions(12, 2024);
+
+    expect(result).toHaveLength(366);
+    expect(result[0].date).toBe('2024-01-01');
+    expect(result.at(-1)?.date).toBe('2024-12-31');
+    expect(result.some((day) => day.date === '2024-02-29')).toBe(true);
+  });
+
+  it('rejects an invalid year', async () => {
+    await expect(service.getContributions(12, '26')).rejects.toThrow(
+      'year must be a four-digit year',
     );
   });
 });

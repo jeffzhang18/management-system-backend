@@ -53,13 +53,16 @@ export class WorkRecordsController {
   }
 
   @ApiOperation({
-    summary: '查询近一年每日工作强度',
-    description:
-      '返回今天及向前 364 天的每日记录数量和五级工作强度，按日期升序排列。',
+    summary: '查询指定年份每日工作强度',
+    description: '返回指定自然年内每日记录数量和五级工作强度，按日期升序排列。',
   })
+  @ApiQuery({ name: 'year', example: 2026, description: '四位数年份' })
   @Get('contributions')
-  getContributions(@User('userId') userId: number) {
-    return this.workRecordsService.getContributions(userId);
+  getContributions(
+    @User('userId') userId: number,
+    @Query('year') year: string,
+  ) {
+    return this.workRecordsService.getContributions(userId, year);
   }
 
   @ApiOperation({
