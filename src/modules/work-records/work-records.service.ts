@@ -14,6 +14,13 @@ import { PatchWorkRecordDto } from './dto/patch-work-record.dto';
 import { UpdateWorkRecordDto } from './dto/update-work-record.dto';
 import { WorkRecord } from './entities/work-record.entity';
 import { WorkRecordTheme } from './entities/work-record-theme.entity';
+import { AiService } from '../ai/ai.service';
+import {
+  AiReportLanguage,
+  AiReportOutputFormat,
+  AiReportType,
+  GenerateAiReportDto,
+} from './dto/generate-ai-report.dto';
 
 type ExportFormat = 'txt' | 'json' | 'pdf';
 
@@ -58,7 +65,71 @@ export class WorkRecordsService {
     private readonly workRecordRepository: Repository<WorkRecord>,
     @InjectRepository(WorkRecordTheme)
     private readonly workRecordThemeRepository: Repository<WorkRecordTheme>,
+    private readonly aiService: AiService,
   ) {}
+
+  async generateAiReport(
+    userIdInput: number | string,
+    payload: GenerateAiReportDto,
+  ) {
+    const userId = this.normalizeUserId(userIdInput);
+    const startDate = this.normalizeDate(payload?.startDate, 'startDate');
+    const endDate = this.normalizeDate(payload?.endDate, 'endDate');
+    this.ensureDateRange(startDate, endDate);
+    this.ensureAiReportRange(startDate, endDate);
+
+    const reportType = this.normalizeAiReportType(payload?.reportType);
+    const outputFormat = this.normalizeAiReportOutputFormat(
+      payload?.outputFormat,
+    );
+    const language = this.normalizeAiReportLanguage(payload?.language);
+
+    const records = await this.workRecordRepository
+      .createQueryBuilder('record')
+      .leftJoinAndSelect('record.theme', 'theme')
+      .where('record.user_id = :userId', { userId })
+      .andWhere('record.deleted_at IS NULL')
+      .andWhere('record.record_date BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .orderBy('record.record_date', 'ASC')
+      .addOrderBy('record.start_time', 'ASC', 'NULLS LAST')
+      .addOrderBy('record.created_at', 'ASC')
+      .getMany();
+
+    if (records.length === 0) {
+      throw new NotFoundException(
+        'No work records found in the selected date range',
+      );
+    }
+
+    const content = await this.aiService.generateWorkReport({
+      startDate,
+      endDate,
+      reportType,
+      outputFormat,
+      language,
+      records: records.map((record) => ({
+        recordDate: record.record_date,
+        title: record.title,
+        startTime: this.normalizeStoredTime(record.start_time),
+        endTime: this.normalizeStoredTime(record.end_time),
+        contentMd: record.content_md ?? null,
+        themeName: record.theme?.theme_name ?? null,
+      })),
+    });
+
+    return {
+      reportType,
+      period: { startDate, endDate },
+      recordCount: records.length,
+      outputFormat,
+      language,
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
   async getThemeList(userIdInput: number | string): Promise<ThemeDetail[]> {
     const userId = this.normalizeUserId(userIdInput);
 
@@ -514,6 +585,44 @@ export class WorkRecordsService {
     if (records <= 3) return 2;
     if (records <= 6) return 3;
     return 4;
+  }
+
+  private ensureAiReportRange(startDate: string, endDate: string) {
+    const start = Date.parse(`${startDate}T00:00:00Z`);
+    const end = Date.parse(`${endDate}T00:00:00Z`);
+    const inclusiveDays = Math.floor((end - start) / 86_400_000) + 1;
+
+    if (inclusiveDays > 31) {
+      throw new BadRequestException(
+        'AI report date range cannot exceed 31 days',
+      );
+    }
+  }
+
+  private normalizeAiReportType(value: unknown): AiReportType {
+    if (
+      value !== AiReportType.WEEKLY_REPORT &&
+      value !== AiReportType.NEXT_WEEK_PLAN
+    ) {
+      throw new BadRequestException(
+        'reportType must be WEEKLY_REPORT or NEXT_WEEK_PLAN',
+      );
+    }
+    return value;
+  }
+
+  private normalizeAiReportOutputFormat(value: unknown): AiReportOutputFormat {
+    if (value !== AiReportOutputFormat.MARKDOWN) {
+      throw new BadRequestException('outputFormat must be MARKDOWN');
+    }
+    return value;
+  }
+
+  private normalizeAiReportLanguage(value: unknown): AiReportLanguage {
+    if (value !== AiReportLanguage.ZH_CN) {
+      throw new BadRequestException('language must be zh-CN');
+    }
+    return value;
   }
 
   private normalizeNumericId(value: unknown, fieldName: string): number {

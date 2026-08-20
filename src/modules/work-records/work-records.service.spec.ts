@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { WorkRecord } from './entities/work-record.entity';
 import { WorkRecordTheme } from './entities/work-record-theme.entity';
 import { WorkRecordsService } from './work-records.service';
+import { AiService } from '../ai/ai.service';
 
 describe('WorkRecordsService contributions', () => {
   const queryBuilder = {
@@ -17,7 +18,14 @@ describe('WorkRecordsService contributions', () => {
     createQueryBuilder: jest.fn(() => queryBuilder),
   } as unknown as Repository<WorkRecord>;
   const themeRepository = {} as Repository<WorkRecordTheme>;
-  const service = new WorkRecordsService(workRecordRepository, themeRepository);
+  const aiService = {
+    generateWorkReport: jest.fn(),
+  } as unknown as AiService;
+  const service = new WorkRecordsService(
+    workRecordRepository,
+    themeRepository,
+    aiService,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();

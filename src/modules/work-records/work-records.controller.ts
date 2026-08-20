@@ -29,12 +29,27 @@ import { PatchWorkRecordDto } from './dto/patch-work-record.dto';
 import { UpdateWorkRecordDto } from './dto/update-work-record.dto';
 import { WorkRecordDayQueryDto } from './dto/work-record-day-query.dto';
 import { WorkRecordsService } from './work-records.service';
+import { GenerateAiReportDto } from './dto/generate-ai-report.dto';
 
 @ApiTags('work-records')
 @ApiBearerAuth('access-token')
 @Controller('work-records')
 export class WorkRecordsController {
   constructor(private readonly workRecordsService: WorkRecordsService) {}
+
+  @ApiOperation({
+    summary: 'AI 生成工作周报或下周安排',
+    description:
+      '根据当前用户在指定日期范围内的工作记录生成 Markdown 报告。提示词模板当前由后端固定配置。',
+  })
+  @ApiBody({ type: GenerateAiReportDto })
+  @Post('ai-report/generate')
+  generateAiReport(
+    @User('userId') userId: number,
+    @Body() body: GenerateAiReportDto,
+  ) {
+    return this.workRecordsService.generateAiReport(userId, body);
+  }
 
   @ApiOperation({
     summary: '查询日历范围内记录摘要',

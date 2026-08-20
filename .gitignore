@@ -60,6 +60,7 @@ node_modules/
 dist/
 .env
 .env.*
+!.env.example
 logs/
 *.log
 pnpm-debug.log*
