@@ -38,4 +38,29 @@ export class SysService {
       data: saved,
     };
   }
+
+  async createUserBrowsingHistorySafely(
+    email: string | null | undefined,
+    payload: CreateUserBrowsingHistoryDto,
+    userIp?: string | null,
+  ): Promise<void> {
+    if (!email) {
+      return;
+    }
+
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      return;
+    }
+
+    const record = this.userBrowsingHistoryRepository.create({
+      user_id: user.user_id,
+      page_url: payload.pageUrl,
+      device: payload.device ?? null,
+      user_ip: userIp ?? null,
+    });
+
+    await this.userBrowsingHistoryRepository.save(record);
+  }
 }
