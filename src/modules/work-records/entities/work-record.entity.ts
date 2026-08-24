@@ -18,7 +18,7 @@ export class WorkRecord {
   @Column({ name: 'record_date', type: 'date' })
   record_date: string;
 
-  @Column({ type: 'varchar', length: 80 })
+  @Column({ type: 'varchar', length: 200 })
   title: string;
 
   @Column({ name: 'theme_id', type: 'bigint' })

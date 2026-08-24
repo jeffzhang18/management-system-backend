@@ -9,7 +9,7 @@ export class UpdateWorkRecordDto {
 
   @ApiProperty({
     description: '记录标题',
-    maxLength: 80,
+    maxLength: 200,
     example: '完成项目排期评审（更新）',
   })
   title: string;

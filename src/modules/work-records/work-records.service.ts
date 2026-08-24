@@ -811,8 +811,8 @@ export class WorkRecordsService {
       throw new BadRequestException('title cannot be empty');
     }
 
-    if (title.length > 80) {
-      throw new BadRequestException('title cannot exceed 80 characters');
+    if (title.length > 200) {
+      throw new BadRequestException('title cannot exceed 200 characters');
     }
 
     return title;
