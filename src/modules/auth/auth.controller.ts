@@ -13,6 +13,7 @@ import { User } from '../../common/decorators/user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RevokeRefreshTokenDto } from './dto/revoke-refresh-token.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 
@@ -62,6 +63,13 @@ export class AuthController {
   revokeAccessToken(@Req() req: Request) {
     const token = this.getBearerToken(req);
     return this.authService.revokeAccessToken(token);
+  }
+
+  @Public()
+  @ApiBody({ type: RefreshTokenDto })
+  @Post('refresh-token')
+  refreshToken(@Body() body: RefreshTokenDto) {
+    return this.authService.refreshToken(body.refreshToken);
   }
 
   @Public()

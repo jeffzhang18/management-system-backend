@@ -27,6 +27,10 @@ export class AuthService {
   }
 
   login(user: User) {
+    return this.issueTokens(user);
+  }
+
+  private issueTokens(user: User) {
     const { password, ...userWithoutPassword } = user;
 
     const accessPayload = {
@@ -94,5 +98,40 @@ export class AuthService {
     return {
       message: 'Refresh token revoked successfully',
     };
+  }
+
+  async refreshToken(rawRefreshToken: string) {
+    const payload = this.jwtService.verify(rawRefreshToken);
+    this.assertTokenType(payload, 'refresh');
+
+    const revoked = await this.tokenRevocationService.isTokenRevoked(rawRefreshToken);
+
+    if (revoked) {
+      throw new UnauthorizedException('Refresh token revoked');
+    }
+
+    const userId = Number(payload?.sub);
+
+    if (!Number.isInteger(userId)) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.userService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const expiresAt = payload?.exp ? new Date(payload.exp * 1000) : null;
+
+    await this.tokenRevocationService.revokeToken({
+      rawToken: rawRefreshToken,
+      tokenType: 'refresh',
+      userEmail: user.email,
+      userId: String(user.id),
+      expiresAt,
+    });
+
+    return this.issueTokens(user);
   }
 }

@@ -18,6 +18,10 @@ export class UserService {
     return this.userRepository.findOne({ where: { email } });
   }
 
+  async findById(id: number): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id } });
+  }
+
   async validatePassword(user: User, password: string): Promise<boolean> {
     return bcrypt.compare(password, user.password);
   }
