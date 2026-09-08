@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsEnum } from 'class-validator';
+import { IsDateString, IsEnum, IsString } from 'class-validator';
 
 export enum AiReportType {
   WEEKLY_REPORT = 'WEEKLY_REPORT',
@@ -12,6 +12,7 @@ export enum AiReportOutputFormat {
 
 export enum AiReportLanguage {
   ZH_CN = 'zh-CN',
+  EN_US = 'en-US',
 }
 
 export class GenerateAiReportDto {
@@ -34,7 +35,12 @@ export class GenerateAiReportDto {
   @IsEnum(AiReportOutputFormat)
   outputFormat: AiReportOutputFormat;
 
-  @ApiProperty({ enum: AiReportLanguage, example: AiReportLanguage.ZH_CN })
-  @IsEnum(AiReportLanguage)
-  language: AiReportLanguage;
+  @ApiProperty({
+    enum: AiReportLanguage,
+    example: AiReportLanguage.ZH_CN,
+    description:
+      '客户端语言。兼容输入 zh/zh-CN 和 en/en-US，服务端会按工作记录主语言输出',
+  })
+  @IsString()
+  language: string;
 }

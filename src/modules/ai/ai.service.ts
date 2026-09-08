@@ -8,7 +8,7 @@ import axios, { AxiosError } from 'axios';
 
 export type AiReportType = 'WEEKLY_REPORT' | 'NEXT_WEEK_PLAN';
 export type AiReportOutputFormat = 'MARKDOWN';
-export type AiReportLanguage = 'zh-CN';
+export type AiReportLanguage = 'zh-CN' | 'en-US';
 
 export type AiWorkRecord = {
   recordDate: string;
@@ -214,3 +214,4 @@ export class AiService {
     ].join('\n');
   }
 }
+

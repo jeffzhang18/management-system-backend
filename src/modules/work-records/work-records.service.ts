@@ -82,7 +82,7 @@ export class WorkRecordsService {
     const outputFormat = this.normalizeAiReportOutputFormat(
       payload?.outputFormat,
     );
-    const language = this.normalizeAiReportLanguage(payload?.language);
+    const requestedLanguage = this.normalizeAiReportLanguage(payload?.language);
 
     const records = await this.workRecordRepository
       .createQueryBuilder('record')
@@ -104,12 +104,14 @@ export class WorkRecordsService {
       );
     }
 
+    const outputLanguage = this.detectDominantLanguage(records);
+
     const content = await this.aiService.generateWorkReport({
       startDate,
       endDate,
       reportType,
       outputFormat,
-      language,
+      language: outputLanguage,
       records: records.map((record) => ({
         recordDate: record.record_date,
         title: record.title,
@@ -125,7 +127,8 @@ export class WorkRecordsService {
       period: { startDate, endDate },
       recordCount: records.length,
       outputFormat,
-      language,
+      requestedLanguage,
+      language: outputLanguage,
       content,
       generatedAt: new Date().toISOString(),
     };
@@ -619,10 +622,51 @@ export class WorkRecordsService {
   }
 
   private normalizeAiReportLanguage(value: unknown): AiReportLanguage {
-    if (value !== AiReportLanguage.ZH_CN) {
-      throw new BadRequestException('language must be zh-CN');
+    if (typeof value !== 'string') {
+      throw new BadRequestException('language must be zh-CN or en-US');
     }
-    return value;
+
+    const normalized = value.trim().toLowerCase();
+
+    if (
+      normalized === 'zh-cn' ||
+      normalized === 'zh' ||
+      normalized === 'zh_cn' ||
+      normalized === 'zh-hans' ||
+      normalized === 'cn'
+    ) {
+      return AiReportLanguage.ZH_CN;
+    }
+
+    if (
+      normalized === 'en-us' ||
+      normalized === 'en' ||
+      normalized === 'en_us' ||
+      normalized === 'en-gb' ||
+      normalized === 'en-uk'
+    ) {
+      return AiReportLanguage.EN_US;
+    }
+
+    throw new BadRequestException('language must be zh-CN or en-US');
+  }
+
+  private detectDominantLanguage(records: WorkRecord[]): AiReportLanguage {
+    let chineseScore = 0;
+    let englishScore = 0;
+
+    for (const record of records) {
+      const sample = `${record.title ?? ''} ${record.content_md ?? ''} ${record.theme?.theme_name ?? ''}`;
+      const chineseChars = (sample.match(/[\u3400-\u9FFF]/g) ?? []).length;
+      const englishChars = (sample.match(/[A-Za-z]/g) ?? []).length;
+
+      chineseScore += chineseChars;
+      englishScore += englishChars;
+    }
+
+    return chineseScore >= englishScore
+      ? AiReportLanguage.ZH_CN
+      : AiReportLanguage.EN_US;
   }
 
   private normalizeNumericId(value: unknown, fieldName: string): number {
@@ -1173,3 +1217,5 @@ export class WorkRecordsService {
     return Buffer.from(pdf, 'ascii');
   }
 }
+
+
