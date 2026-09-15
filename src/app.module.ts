@@ -20,7 +20,6 @@ import { ApiCallLogModule } from './common/logging/api-call-log.module';
 import { ApiCallLogInterceptor } from './common/interceptors/api-call-log.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { WsModule } from './ws/ws.module';
-import { UserBrowsingHistoryInterceptor } from './common/interceptors/user-browsing-history.interceptor';
 
 @Module({
   imports: [
@@ -59,10 +58,6 @@ import { UserBrowsingHistoryInterceptor } from './common/interceptors/user-brows
     {
       provide: APP_INTERCEPTOR,
       useClass: ApiCallLogInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: UserBrowsingHistoryInterceptor,
     },
   ],
 })
