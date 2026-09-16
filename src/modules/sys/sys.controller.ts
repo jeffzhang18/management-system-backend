@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { User } from '../../common/decorators/user.decorator';
@@ -13,6 +20,13 @@ export class SysController {
 
   @ApiBody({ type: CreateUserBrowsingHistoryDto })
   @Post('user-browsing-history')
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
   createUserBrowsingHistory(
     @User('email') email: string,
     @Body() body: CreateUserBrowsingHistoryDto,
@@ -22,6 +36,7 @@ export class SysController {
       email,
       body,
       this.getRequestIp(request),
+      request.headers['user-agent'],
     );
   }
 

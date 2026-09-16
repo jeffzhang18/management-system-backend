@@ -34,7 +34,9 @@ import { WsModule } from './ws/ws.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadEntities: true, // ✅ 关键
-      synchronize: true, // ⚠️ 仅开发环境
+      synchronize: process.env.NODE_ENV !== 'production',
+      migrations: [__dirname + '/migrations/*{.ts,.js}'],
+      migrationsRun: false,
     }),
     UserModule,
     WeatherModule,
