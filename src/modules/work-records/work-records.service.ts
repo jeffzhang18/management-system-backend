@@ -104,7 +104,7 @@ export class WorkRecordsService {
       );
     }
 
-    const outputLanguage = this.detectDominantLanguage(records);
+    const outputLanguage = requestedLanguage;
 
     const content = await this.aiService.generateWorkReport({
       startDate,
@@ -649,24 +649,6 @@ export class WorkRecordsService {
     }
 
     throw new BadRequestException('language must be zh-CN or en-US');
-  }
-
-  private detectDominantLanguage(records: WorkRecord[]): AiReportLanguage {
-    let chineseScore = 0;
-    let englishScore = 0;
-
-    for (const record of records) {
-      const sample = `${record.title ?? ''} ${record.content_md ?? ''} ${record.theme?.theme_name ?? ''}`;
-      const chineseChars = (sample.match(/[\u3400-\u9FFF]/g) ?? []).length;
-      const englishChars = (sample.match(/[A-Za-z]/g) ?? []).length;
-
-      chineseScore += chineseChars;
-      englishScore += englishChars;
-    }
-
-    return chineseScore >= englishScore
-      ? AiReportLanguage.ZH_CN
-      : AiReportLanguage.EN_US;
   }
 
   private normalizeNumericId(value: unknown, fieldName: string): number {

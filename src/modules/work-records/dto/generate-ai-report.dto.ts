@@ -39,7 +39,7 @@ export class GenerateAiReportDto {
     enum: AiReportLanguage,
     example: AiReportLanguage.ZH_CN,
     description:
-      '客户端语言。兼容输入 zh/zh-CN 和 en/en-US，服务端会按工作记录主语言输出',
+      '客户端语言。兼容输入 zh/zh-CN 和 en/en-US，服务端将严格按该语言输出',
   })
   @IsString()
   language: string;
