@@ -12,6 +12,7 @@ import { NotifierModule } from './modules/notifier/notifier.module';
 import { SysModule } from './modules/sys/sys.module';
 import { GameModule } from './modules/game/game.module';
 import { WorkRecordsModule } from './modules/work-records/work-records.module';
+import { AnalysisModule } from './modules/analysis/analysis.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -46,6 +47,7 @@ import { WsModule } from './ws/ws.module';
     GameModule,
     WorkRecordsModule,
     SysModule,
+    AnalysisModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),
