@@ -30,10 +30,10 @@ export class AnalysisController {
     }),
   )
   getTotalPageViews(
-    @User('userId') userId: string,
+    @User('email') email: string,
     @Query() query: PageViewAnalysisQueryDto,
   ) {
-    return this.analysisService.getTotalPageViews(userId, query);
+    return this.analysisService.getTotalPageViews(email, query);
   }
 
   @ApiOperation({
@@ -50,9 +50,9 @@ export class AnalysisController {
     }),
   )
   getAverageTimeOnPage(
-    @User('userId') userId: string,
+    @User('email') email: string,
     @Query() query: PageViewAnalysisQueryDto,
   ) {
-    return this.analysisService.getAverageTimeOnPage(userId, query);
+    return this.analysisService.getAverageTimeOnPage(email, query);
   }
 }

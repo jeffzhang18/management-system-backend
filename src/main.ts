@@ -62,7 +62,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('docs', app, document);
-  // 访问地址：http://localhost:3000/docs
+  SwaggerModule.setup('api/docs', app, document);
+  // 访问地址：http://localhost:3000/docs 或 http://localhost:3000/api/docs
   // 实际接口地址前缀：http://localhost:3000/api/xxx
 
   const reflector = app.get(Reflector);

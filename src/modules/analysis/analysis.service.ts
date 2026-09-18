@@ -1,12 +1,19 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserService } from '../../domain/user/user.service';
 import { UserBrowsingHistory } from '../sys/entities/user-browsing-history.entity';
 import { PageViewAnalysisQueryDto } from './dto/page-view-analysis-query.dto';
 
 interface DateRange {
   startAt: Date;
   endAt: Date;
+  displayStartAt: string;
+  displayEndAt: string;
 }
 
 @Injectable()
@@ -14,15 +21,17 @@ export class AnalysisService {
   constructor(
     @InjectRepository(UserBrowsingHistory)
     private readonly userBrowsingHistoryRepository: Repository<UserBrowsingHistory>,
+    private readonly userService: UserService,
   ) {}
 
-  async getTotalPageViews(userId: string, query: PageViewAnalysisQueryDto) {
+  async getTotalPageViews(email: string, query: PageViewAnalysisQueryDto) {
     const range = this.resolveDateRange(query);
+    const browsingHistoryUserId = await this.getBrowsingHistoryUserId(email);
 
     const result = await this.userBrowsingHistoryRepository
       .createQueryBuilder('history')
       .select('COUNT(*)', 'totalPageViews')
-      .where('history.user_id = :userId', { userId })
+      .where('history.user_id = :userId', { userId: browsingHistoryUserId })
       .andWhere('history.browsing_at >= :startAt', { startAt: range.startAt })
       .andWhere('history.browsing_at < :endAt', { endAt: range.endAt })
       .getRawOne<{ totalPageViews: string }>();
@@ -33,14 +42,15 @@ export class AnalysisService {
     };
   }
 
-  async getAverageTimeOnPage(userId: string, query: PageViewAnalysisQueryDto) {
+  async getAverageTimeOnPage(email: string, query: PageViewAnalysisQueryDto) {
     const range = this.resolveDateRange(query);
+    const browsingHistoryUserId = await this.getBrowsingHistoryUserId(email);
 
     const result = await this.userBrowsingHistoryRepository
       .createQueryBuilder('history')
       .select('COUNT(*)', 'pageViews')
       .addSelect('COALESCE(AVG(history.active_duration_ms), 0)', 'averageMs')
-      .where('history.user_id = :userId', { userId })
+      .where('history.user_id = :userId', { userId: browsingHistoryUserId })
       .andWhere('history.browsing_at >= :startAt', { startAt: range.startAt })
       .andWhere('history.browsing_at < :endAt', { endAt: range.endAt })
       .getRawOne<{ pageViews: string; averageMs: string }>();
@@ -53,6 +63,16 @@ export class AnalysisService {
       averageTimeOnPageSeconds: Number((averageTimeOnPageMs / 1000).toFixed(2)),
       ...this.toPeriodResponse(range),
     };
+  }
+
+  private async getBrowsingHistoryUserId(email: string): Promise<string> {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user.user_id;
   }
 
   private resolveDateRange(query: PageViewAnalysisQueryDto): DateRange {
@@ -74,7 +94,14 @@ export class AnalysisService {
         throw new BadRequestException('startDate must be before endDate');
       }
 
-      return { startAt, endAt };
+      return {
+        startAt,
+        endAt,
+        displayStartAt: this.toChinaDateTimeStart(query.startDate),
+        displayEndAt: this.toChinaDateTimeStart(
+          this.addDaysToDateString(query.endDate, 1),
+        ),
+      };
     }
 
     throw new BadRequestException(
@@ -86,7 +113,12 @@ export class AnalysisService {
     const startAt = this.parseChinaDateStart(date);
     const endAt = this.addDays(startAt, 1);
 
-    return { startAt, endAt };
+    return {
+      startAt,
+      endAt,
+      displayStartAt: this.toChinaDateTimeStart(date),
+      displayEndAt: this.toChinaDateTimeStart(this.addDaysToDateString(date, 1)),
+    };
   }
 
   private parseChinaDateStart(value: string): Date {
@@ -123,10 +155,21 @@ export class AnalysisService {
     return result;
   }
 
+  private addDaysToDateString(value: string, days: number): string {
+    const date = this.addDays(this.parseChinaDateStart(value), days);
+    const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+
+    return chinaTime.toISOString().slice(0, 10);
+  }
+
+  private toChinaDateTimeStart(date: string): string {
+    return `${date}T00:00:00+08:00`;
+  }
+
   private toPeriodResponse(range: DateRange) {
     return {
-      startAt: range.startAt.toISOString(),
-      endAt: range.endAt.toISOString(),
+      startAt: range.displayStartAt,
+      endAt: range.displayEndAt,
       timezone: 'Asia/Shanghai',
     };
   }
