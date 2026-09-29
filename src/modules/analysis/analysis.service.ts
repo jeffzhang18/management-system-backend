@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { UserService } from '../../domain/user/user.service';
 import { UserBrowsingHistory } from '../sys/entities/user-browsing-history.entity';
 import { PageViewAnalysisQueryDto } from './dto/page-view-analysis-query.dto';
+import { PageViewTrendQueryDto } from './dto/page-view-trend-query.dto';
 
 interface DateRange {
   startAt: Date;
@@ -23,6 +24,80 @@ export class AnalysisService {
     private readonly userBrowsingHistoryRepository: Repository<UserBrowsingHistory>,
     private readonly userService: UserService,
   ) {}
+
+  async getPageViews(email: string, query: PageViewTrendQueryDto) {
+    const range = this.resolveDateRange(query);
+    const browsingHistoryUserId = await this.getBrowsingHistoryUserId(email);
+
+    const results = await this.userBrowsingHistoryRepository
+      .createQueryBuilder('history')
+      .select(
+        "TO_CHAR((history.browsing_at AT TIME ZONE 'Asia/Shanghai')::date, 'YYYY-MM-DD')",
+        'date',
+      )
+      .addSelect('COUNT(*)', 'pageViews')
+      .addSelect(
+        'COALESCE(SUM(history.active_duration_ms), 0)',
+        'totalTimeOnPageMs',
+      )
+      .where('history.user_id = :userId', { userId: browsingHistoryUserId })
+      .andWhere('history.browsing_at >= :startAt', { startAt: range.startAt })
+      .andWhere('history.browsing_at < :endAt', { endAt: range.endAt })
+      .groupBy("(history.browsing_at AT TIME ZONE 'Asia/Shanghai')::date")
+      .orderBy(
+        "(history.browsing_at AT TIME ZONE 'Asia/Shanghai')::date",
+        'ASC',
+      )
+      .getRawMany<{
+        date: string;
+        pageViews: string;
+        totalTimeOnPageMs: string;
+      }>();
+
+    const resultsByDate = new Map(
+      results.map((result) => [result.date, result]),
+    );
+    const dates = this.getDatesInRange(query.startDate, query.endDate);
+    let totalPageViews = 0;
+    let totalTimeOnPageMs = 0;
+
+    const daily = dates.map((date) => {
+      const result = resultsByDate.get(date);
+      const pageViews = Number(result?.pageViews ?? 0);
+      const dayTotalTimeOnPageMs = Number(result?.totalTimeOnPageMs ?? 0);
+
+      totalPageViews += pageViews;
+      totalTimeOnPageMs += dayTotalTimeOnPageMs;
+
+      return {
+        date,
+        pageViews,
+        totalTimeOnPageMs: dayTotalTimeOnPageMs,
+        averageTimeOnPageMs:
+          pageViews === 0 ? 0 : Math.round(dayTotalTimeOnPageMs / pageViews),
+      };
+    });
+
+    return {
+      daily,
+      summary: {
+        totalPageViews,
+        averageDailyPageViews: Number(
+          (totalPageViews / dates.length).toFixed(2),
+        ),
+        totalTimeOnPageMs,
+        averageTimeOnPageMs:
+          totalPageViews === 0
+            ? 0
+            : Math.round(totalTimeOnPageMs / totalPageViews),
+      },
+      period: {
+        startDate: query.startDate,
+        endDate: query.endDate,
+        timezone: 'Asia/Shanghai',
+      },
+    };
+  }
 
   async getTotalPageViews(email: string, query: PageViewAnalysisQueryDto) {
     const range = this.resolveDateRange(query);
@@ -75,8 +150,10 @@ export class AnalysisService {
     return user.user_id;
   }
 
-  private resolveDateRange(query: PageViewAnalysisQueryDto): DateRange {
-    if (query.date) {
+  private resolveDateRange(
+    query: PageViewAnalysisQueryDto | PageViewTrendQueryDto,
+  ): DateRange {
+    if ('date' in query && query.date) {
       if (query.startDate || query.endDate) {
         throw new BadRequestException(
           'date cannot be used with startDate or endDate',
@@ -109,6 +186,18 @@ export class AnalysisService {
     );
   }
 
+  private getDatesInRange(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    let currentDate = startDate;
+
+    while (currentDate <= endDate) {
+      dates.push(currentDate);
+      currentDate = this.addDaysToDateString(currentDate, 1);
+    }
+
+    return dates;
+  }
+
   private getSingleDateRange(date: string): DateRange {
     const startAt = this.parseChinaDateStart(date);
     const endAt = this.addDays(startAt, 1);
@@ -117,7 +206,9 @@ export class AnalysisService {
       startAt,
       endAt,
       displayStartAt: this.toChinaDateTimeStart(date),
-      displayEndAt: this.toChinaDateTimeStart(this.addDaysToDateString(date, 1)),
+      displayEndAt: this.toChinaDateTimeStart(
+        this.addDaysToDateString(date, 1),
+      ),
     };
   }
 
