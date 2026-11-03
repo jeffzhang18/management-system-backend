@@ -210,12 +210,14 @@ export class NotifierService {
     await this.sendWechatMessage(
       `${dateLine}成本记录\n` +
       'Azure:\n'+
-      'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource'+
-      '\n豆包:\n'+
-      'https://console.volcengine.com/finance/bill/cost-analyse'+
+      'https://portal.azure.com/#@aesc-group.com/resource/subscriptions/90bbfc1d-ebfd-47c6-a20e-d01458de8db1/costByResource\n'+
+      '豆包:\n'+
+      'https://console.volcengine.com/finance/bill/cost-analyse\n'+
       // '\n智谱glm:\n'+
       // 'https://bigmodel.cn/finance-center/bill/expensebill/list'+
-      '\n文档:\n'+
+      'AWS Claude:\n'+
+      'https://genie.aesc-group.com/kiro-reverse-proxy-admin/monitor\n'+
+      '文档:\n'+
       'https://doc.weixin.qq.com/sheet/e3_AW4ATAYGAOECNLgYOUE80T4uOLLMK?scode=AH0AnQcXAAsTxzIFCNAVkATwadAA4&version=5.0.8.6009&platform=win&tab=t653gm'
       ,
       process.env.WECHAT_WEBHOOK_9AM,
