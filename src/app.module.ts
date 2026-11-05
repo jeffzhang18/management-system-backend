@@ -13,6 +13,7 @@ import { SysModule } from './modules/sys/sys.module';
 import { GameModule } from './modules/game/game.module';
 import { WorkRecordsModule } from './modules/work-records/work-records.module';
 import { AnalysisModule } from './modules/analysis/analysis.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -48,6 +49,7 @@ import { WsModule } from './ws/ws.module';
     WorkRecordsModule,
     SysModule,
     AnalysisModule,
+    SubscriptionsModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),
