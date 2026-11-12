@@ -10,6 +10,53 @@ import {
 } from './search-values';
 
 describe('Search values', () => {
+  it('validates gradient colors and angles even outside gradient mode', () => {
+    expect(
+      validateSearchSettings({
+        ...DEFAULT_SEARCH_SETTINGS,
+        backgroundMode: 'gradient',
+        gradientFrom: '#ABCDEF',
+        gradientTo: '#123456',
+        gradientAngle: 359,
+      }),
+    ).toMatchObject({ backgroundMode: 'gradient', gradientAngle: 359 });
+    for (const patch of [
+      { gradientFrom: 'red' },
+      { gradientTo: '#fff' },
+      { gradientFrom: null },
+      { gradientAngle: -1 },
+      { gradientAngle: 360 },
+      { gradientAngle: 0.5 },
+      { gradientAngle: null },
+    ]) {
+      expect(() =>
+        validateSearchSettings({
+          ...DEFAULT_SEARCH_SETTINGS,
+          ...patch,
+        } as typeof DEFAULT_SEARCH_SETTINGS),
+      ).toThrow(BadRequestException);
+    }
+    expect(
+      validateSync(
+        plainToInstance(UpdateSearchSettingsDto, {
+          version: 0,
+          backgroundMode: 'gradient',
+          gradientFrom: '#ABCDEF',
+          gradientTo: '#123456',
+          gradientAngle: 90,
+        }),
+      ),
+    ).toHaveLength(0);
+    expect(
+      validateSync(
+        plainToInstance(UpdateSearchSettingsDto, {
+          version: 0,
+          gradientFrom: 'red',
+          gradientAngle: 360,
+        }),
+      ),
+    ).not.toHaveLength(0);
+  });
   it.each([
     ['google', 'www.google.com', 'q'],
     ['baidu', 'www.baidu.com', 'wd'],

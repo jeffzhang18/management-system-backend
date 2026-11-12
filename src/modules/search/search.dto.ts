@@ -13,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  Matches,
   ValidateIf,
 } from 'class-validator';
 import type { SearchEngine } from './search.entity';
@@ -36,10 +37,27 @@ export class UpdateSearchSettingsDto {
   @IsBoolean()
   openInNewTab?: boolean;
 
-  @ApiPropertyOptional({ enum: ['default', 'online'] })
+  @ApiPropertyOptional({ enum: ['default', 'gradient', 'online'] })
   @IsOptional()
-  @IsIn(['default', 'online'])
-  backgroundMode?: 'default' | 'online';
+  @IsIn(['default', 'gradient', 'online'])
+  backgroundMode?: 'default' | 'gradient' | 'online';
+
+  @ApiPropertyOptional({ example: '#1e3a8a' })
+  @IsOptional()
+  @Matches(/^#[0-9a-f]{6}$/i)
+  gradientFrom?: string;
+
+  @ApiPropertyOptional({ example: '#6d28d9' })
+  @IsOptional()
+  @Matches(/^#[0-9a-f]{6}$/i)
+  gradientTo?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 359 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(359)
+  gradientAngle?: number;
 
   @ApiPropertyOptional({ nullable: true, description: '在线壁纸 HTTPS 链接' })
   @ValidateIf((_object, value) => value !== null && value !== undefined)

@@ -7,6 +7,7 @@ import {
 import { DataType, newDb } from 'pg-mem';
 import { DataSource } from 'typeorm';
 import { AddSearchNavigation1794355200000 } from '../../migrations/1794355200000-AddSearchNavigation';
+import { AddSearchGradient1794441600000 } from '../../migrations/1794441600000-AddSearchGradient';
 import { SearchBookmark, SearchHistory, SearchSettings } from './search.entity';
 import { SearchService } from './search.service';
 
@@ -66,7 +67,22 @@ describe('SearchService with an isolated in-memory PostgreSQL adapter', () => {
     await db.query('CREATE TABLE user_info (id SERIAL PRIMARY KEY)');
     await db.query('INSERT INTO user_info(id) VALUES (1),(2)');
     const runner = db.createQueryRunner();
+    // pg-mem does not generate PostgreSQL's column check names. Name this
+    // legacy constraint explicitly in the adapter so the real upgrade can run.
+    const query = runner.query.bind(runner);
+    const legacyCheck = jest
+      .spyOn(runner, 'query')
+      .mockImplementation((sql: string) =>
+        query(
+          sql.replace(
+            "CHECK (background_mode IN ('default','online'))",
+            "CONSTRAINT search_settings_background_mode_check CHECK (background_mode IN ('default','online'))",
+          ),
+        ),
+      );
     await new AddSearchNavigation1794355200000().up(runner);
+    legacyCheck.mockRestore();
+    await new AddSearchGradient1794441600000().up(runner);
     await runner.release();
     service = new SearchService(db);
   });
@@ -100,6 +116,62 @@ describe('SearchService with an isolated in-memory PostgreSQL adapter', () => {
     await expect(service.settings(undefined)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+
+  it('persists account gradients and preserves them when changing background mode', async () => {
+    const values = {
+      gradientFrom: '#abcdef',
+      gradientTo: '#123456',
+      gradientAngle: 270,
+    };
+    const saved = await service.saveSettings(1, {
+      version: 0,
+      backgroundMode: 'gradient',
+      ...values,
+    });
+    expect(saved).toMatchObject({ version: 1, ...values });
+    expect(await service.settings(1)).toMatchObject(values);
+    expect(await service.settings(2)).toMatchObject({
+      backgroundMode: 'default',
+      gradientFrom: '#1e3a8a',
+      gradientAngle: 135,
+    });
+    await expect(
+      service.saveSettings(1, { version: 0, gradientAngle: 0 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(
+      await service.saveSettings(1, { version: 1, backgroundMode: 'default' }),
+    ).toMatchObject(values);
+  });
+
+  it('upgrades existing white and online settings and safely rolls gradients back', async () => {
+    await service.saveSettings(1, { version: 0, backgroundMode: 'gradient' });
+    await service.saveSettings(2, {
+      version: 0,
+      backgroundMode: 'online',
+      wallpaperUrl: 'https://example.com/w.jpg',
+    });
+    const runner = db.createQueryRunner();
+    const migration = new AddSearchGradient1794441600000();
+    await migration.down(runner);
+    expect(
+      await db.query(
+        'SELECT background_mode, version FROM search_settings WHERE user_id = 1',
+      ),
+    ).toEqual([{ background_mode: 'default', version: 2 }]);
+    await migration.up(runner);
+    expect(await service.settings(1)).toMatchObject({
+      backgroundMode: 'default',
+      gradientFrom: '#1e3a8a',
+      gradientTo: '#6d28d9',
+      gradientAngle: 135,
+    });
+    expect(await service.settings(2)).toMatchObject({
+      backgroundMode: 'online',
+      wallpaperUrl: 'https://example.com/w.jpg',
+      version: 1,
+    });
+    await runner.release();
   });
 
   it('creates, edits, sorts and deletes only the authenticated owner bookmarks', async () => {
@@ -198,6 +270,7 @@ describe('SearchService with an isolated in-memory PostgreSQL adapter', () => {
 
   it('rolls the explicit migration back without removing accounts', async () => {
     const runner = db.createQueryRunner();
+    await new AddSearchGradient1794441600000().down(runner);
     await new AddSearchNavigation1794355200000().down(runner);
     await runner.release();
     for (const table of [

@@ -6,7 +6,10 @@ export const DEFAULT_SEARCH_SETTINGS: Readonly<SettingsValues> = Object.freeze({
   version: 0,
   defaultEngine: 'google' as SearchEngine,
   openInNewTab: true,
-  backgroundMode: 'default' as 'default' | 'online',
+  backgroundMode: 'default' as 'default' | 'gradient' | 'online',
+  gradientFrom: '#1e3a8a',
+  gradientTo: '#6d28d9',
+  gradientAngle: 135,
   wallpaperUrl: null as string | null,
   overlayOpacity: 0.3,
   iconSize: 72,
@@ -65,7 +68,11 @@ export function validateSearchSettings(value: typeof DEFAULT_SEARCH_SETTINGS) {
   if (
     !['google', 'baidu', 'bing'].includes(value.defaultEngine) ||
     typeof value.openInNewTab !== 'boolean' ||
-    !['default', 'online'].includes(value.backgroundMode) ||
+    !['default', 'gradient', 'online'].includes(value.backgroundMode) ||
+    typeof value.gradientFrom !== 'string' ||
+    !/^#[0-9a-f]{6}$/i.test(value.gradientFrom) ||
+    typeof value.gradientTo !== 'string' ||
+    !/^#[0-9a-f]{6}$/i.test(value.gradientTo) ||
     !['row', 'column'].includes(value.layoutDirection)
   )
     throw new BadRequestException('无效的搜索设置');
@@ -75,6 +82,7 @@ export function validateSearchSettings(value: typeof DEFAULT_SEARCH_SETTINGS) {
     [value.radius, 0, value.iconSize / 2, true],
     [value.itemsPerLine, 1, 12, true],
     [value.overlayOpacity, 0, 0.85, false],
+    [value.gradientAngle, 0, 359, true],
   ];
   for (const [item, min, max, integer] of ranges) {
     if (

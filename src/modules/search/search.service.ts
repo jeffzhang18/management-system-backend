@@ -86,19 +86,20 @@ export class SearchService {
       const next = validateSearchSettings({ ...base, ...changes });
       return publicFields(
         await repo.save(
-          repo.create({ ...next, userId: owner, version: base.version + 1 }),
+          repo.merge(current ?? repo.create({ userId: owner }), {
+            ...next,
+            version: base.version + 1,
+          }),
         ),
       );
     });
   }
 
   async bookmarks(userId: unknown) {
-    const rows = await this.dataSource
-      .getRepository(SearchBookmark)
-      .find({
-        where: { userId: this.owner(userId) },
-        order: { sortOrder: 'ASC', id: 'ASC' },
-      });
+    const rows = await this.dataSource.getRepository(SearchBookmark).find({
+      where: { userId: this.owner(userId) },
+      order: { sortOrder: 'ASC', id: 'ASC' },
+    });
     return { items: rows.map(publicFields) };
   }
 

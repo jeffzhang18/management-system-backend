@@ -17,7 +17,23 @@ export class SearchSettings {
   defaultEngine: SearchEngine;
   @Column({ name: 'open_in_new_tab', type: 'boolean' }) openInNewTab: boolean;
   @Column({ name: 'background_mode', type: 'varchar', length: 8 })
-  backgroundMode: 'default' | 'online';
+  backgroundMode: 'default' | 'gradient' | 'online';
+  @Column({
+    name: 'gradient_from',
+    type: 'varchar',
+    length: 7,
+    default: '#1e3a8a',
+  })
+  gradientFrom: string;
+  @Column({
+    name: 'gradient_to',
+    type: 'varchar',
+    length: 7,
+    default: '#6d28d9',
+  })
+  gradientTo: string;
+  @Column({ name: 'gradient_angle', type: 'integer', default: 135 })
+  gradientAngle: number;
   @Column({
     name: 'wallpaper_url',
     type: 'varchar',
@@ -46,9 +62,11 @@ export class SearchBookmark {
   @Column({ type: 'varchar', length: 80 }) name: string;
   @Column({ type: 'varchar', length: 2048 }) url: string;
   @Column({ name: 'title_source', type: 'varchar', length: 8 }) titleSource:
-    'auto' | 'custom';
+    | 'auto'
+    | 'custom';
   @Column({ name: 'icon_source', type: 'varchar', length: 8 }) iconSource:
-    'auto' | 'custom';
+    | 'auto'
+    | 'custom';
   @Column({ name: 'icon_url', type: 'varchar', length: 2048, nullable: true })
   iconUrl: string | null;
   @Column({ name: 'sort_order', type: 'integer' }) sortOrder: number;
