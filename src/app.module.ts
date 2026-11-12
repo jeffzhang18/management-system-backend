@@ -14,6 +14,7 @@ import { GameModule } from './modules/game/game.module';
 import { WorkRecordsModule } from './modules/work-records/work-records.module';
 import { AnalysisModule } from './modules/analysis/analysis.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { SearchModule } from './modules/search/search.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -50,6 +51,7 @@ import { WsModule } from './ws/ws.module';
     SysModule,
     AnalysisModule,
     SubscriptionsModule,
+    SearchModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),

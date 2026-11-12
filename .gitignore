@@ -67,6 +67,7 @@ pnpm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+.claude/
 
 # holiday-cn local cache
 cache/holiday-cn/*.json
