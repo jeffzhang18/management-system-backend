@@ -15,6 +15,7 @@ import { WorkRecordsModule } from './modules/work-records/work-records.module';
 import { AnalysisModule } from './modules/analysis/analysis.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { SearchModule } from './modules/search/search.module';
+import { UiSettingsModule } from './modules/ui-settings/ui-settings.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -52,6 +53,7 @@ import { WsModule } from './ws/ws.module';
     AnalysisModule,
     SubscriptionsModule,
     SearchModule,
+    UiSettingsModule,
     ApiCallLogModule,
     WsModule,
     ScheduleModule.forRoot(),
