@@ -54,4 +54,9 @@ export class UpdateUiSettingsDto {
   @IsOptional()
   @IsIn(['ltr', 'rtl'])
   direction?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsIn(['zh_CN', 'en_US'])
+  language?: string;
 }
