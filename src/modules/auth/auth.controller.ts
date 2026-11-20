@@ -12,6 +12,8 @@ import { Public } from '../../common/decorators/public.decorator';
 import { User } from '../../common/decorators/user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { SendRegisterCodeDto } from './dto/send-register-code.dto';
+import { EmailVerificationService } from './email-verification.service';
 import { RevokeRefreshTokenDto } from './dto/revoke-refresh-token.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -24,6 +26,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private userService: UserService,
+    private emailVerificationService: EmailVerificationService,
   ) {}
 
   @Public()
@@ -34,8 +37,15 @@ export class AuthController {
   }
 
   @Public()
+  @Post('register/code')
+  sendRegisterCode(@Body() body: SendRegisterCodeDto) {
+    return this.emailVerificationService.sendRegisterCode(body.email);
+  }
+
+  @Public()
   @Post('register')
   async register(@Body() body: RegisterDto) {
+    await this.emailVerificationService.consume(body.email, body.code);
     const user = await this.userService.createUser(
       body.email,
       body.userName,

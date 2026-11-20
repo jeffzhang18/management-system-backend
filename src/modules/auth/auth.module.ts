@@ -8,11 +8,14 @@ import { JwtStrategy } from './jwt.strategy';
 import { UserModule } from 'src/domain/user/user.model';
 import { TokenRevocation } from './entities/token-revocation.entity';
 import { TokenRevocationService } from './token-revocation.service';
+import { EmailVerificationCode } from './entities/email-verification-code.entity';
+import { EmailVerificationService } from './email-verification.service';
+import { MailService } from './mail.service';
 
 @Module({
   imports: [
     UserModule,
-    TypeOrmModule.forFeature([TokenRevocation]),
+    TypeOrmModule.forFeature([TokenRevocation, EmailVerificationCode]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'dev-secret',
@@ -20,7 +23,13 @@ import { TokenRevocationService } from './token-revocation.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, TokenRevocationService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    TokenRevocationService,
+    EmailVerificationService,
+    MailService,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
