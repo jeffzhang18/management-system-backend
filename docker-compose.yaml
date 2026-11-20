@@ -1,0 +1,29 @@
+name: management-backend
+
+services:
+  backend:
+    image: ghcr.io/jeffzhang18/management-system-backend:${IMAGE_TAG:-latest}
+    container_name: management-backend
+    restart: unless-stopped
+    env_file: backend.env
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    volumes:
+      - holiday-cache:/app/cache
+    networks:
+      - app-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  app-net:
+    external: true
+
+volumes:
+  holiday-cache:

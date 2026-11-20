@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.github
+.claude
+.idx
+.learnings
+docs
+test
+cache
+logs
+*.log
+.env
+.env.*
+!.env.example
+Dockerfile
+docker-compose.yaml
