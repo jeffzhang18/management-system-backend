@@ -23,6 +23,9 @@ export class User {
   @Column({ unique: true })
   user_id: string;
 
+  @Column({ name: 'token_version', type: 'int', default: 0 })
+  tokenVersion: number;
+
   @Column()
   password: string; // bcrypt hash
 

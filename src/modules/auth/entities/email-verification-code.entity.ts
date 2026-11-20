@@ -15,6 +15,9 @@ export class EmailVerificationCode {
   @Column({ type: 'varchar', length: 320 })
   email: string;
 
+  @Column({ type: 'varchar', length: 32, default: 'register' })
+  purpose: 'register' | 'reset-password' | 'login' | 'passkey-register';
+
   @Column({ name: 'code_hash', type: 'varchar', length: 64 })
   code_hash: string;
 

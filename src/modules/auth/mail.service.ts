@@ -3,6 +3,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import type { VerificationPurpose } from './email-verification.service';
 import { createTransport, type Transporter } from 'nodemailer';
 
 @Injectable()
@@ -31,15 +32,27 @@ export class MailService {
     return this.transporter;
   }
 
-  async sendVerificationCode(to: string, code: string, ttlMinutes: number) {
+  async sendVerificationCode(
+    to: string,
+    code: string,
+    ttlMinutes: number,
+    purpose: VerificationPurpose = 'register',
+  ) {
+    const labels: Record<VerificationPurpose, string> = {
+      register: '注册',
+      'reset-password': '重置密码',
+      login: '登录',
+      'passkey-register': '绑定通行密钥',
+    };
+    const label = labels[purpose];
     const transporter = this.getTransporter();
     try {
       await transporter.sendMail({
         from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to,
-        subject: '注册验证码',
-        text: `您的注册验证码是 ${code}，${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。`,
-        html: `<p>您的注册验证码是 <b style="font-size:20px;letter-spacing:4px">${code}</b></p><p>${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。</p>`,
+        subject: `${label}验证码`,
+        text: `您的${label}验证码是 ${code}，${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。`,
+        html: `<p>您的${label}验证码是 <b style="font-size:20px;letter-spacing:4px">${code}</b></p><p>${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。</p>`,
       });
     } catch (error) {
       this.logger.error(

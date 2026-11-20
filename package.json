@@ -5,6 +5,9 @@
   "description": "",
   "author": "",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
@@ -34,6 +37,7 @@
     "@nestjs/swagger": "^11.2.5",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.14",
+    "@simplewebauthn/server": "14.1.0",
     "axios": "^1.13.3",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.0.0",

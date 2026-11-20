@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Raw, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { User } from './user.entity';
@@ -16,6 +16,20 @@ export class UserService {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
+  }
+
+  async findByEmailInsensitive(
+    email: string,
+    manager?: EntityManager,
+  ): Promise<User | null> {
+    const repo = manager ? manager.getRepository(User) : this.userRepository;
+    return repo.findOne({
+      where: {
+        email: Raw((alias) => `LOWER(${alias}) = :email`, {
+          email: email.trim().toLowerCase(),
+        }),
+      },
+    });
   }
 
   async findById(id: number): Promise<User | null> {

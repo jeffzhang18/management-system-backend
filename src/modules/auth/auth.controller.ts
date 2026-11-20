@@ -5,12 +5,17 @@ import {
   Get,
   Req,
   UnauthorizedException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserService } from '../../domain/user/user.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { User } from '../../common/decorators/user.decorator';
+import { LoginWithEmailCodeDto } from './dto/login-with-email-code.dto';
+import { SendLoginCodeDto } from './dto/send-login-code.dto';
 import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendResetPasswordCodeDto } from './dto/send-reset-password-code.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SendRegisterCodeDto } from './dto/send-register-code.dto';
 import { EmailVerificationService } from './email-verification.service';
@@ -37,6 +42,22 @@ export class AuthController {
   }
 
   @Public()
+  @Post('login/email/code')
+  sendLoginCode(
+    @Body(new ValidationPipe({ whitelist: true })) body: SendLoginCodeDto,
+  ) {
+    return this.emailVerificationService.sendLoginCode(body.email);
+  }
+
+  @Public()
+  @Post('login/email')
+  loginWithEmailCode(
+    @Body(new ValidationPipe({ whitelist: true })) body: LoginWithEmailCodeDto,
+  ) {
+    return this.authService.loginWithEmailCode(body);
+  }
+
+  @Public()
   @Post('register/code')
   sendRegisterCode(@Body() body: SendRegisterCodeDto) {
     return this.emailVerificationService.sendRegisterCode(body.email);
@@ -55,6 +76,23 @@ export class AuthController {
 
     // 注册成功后直接登录（可选，但很常见）
     return this.authService.login(user);
+  }
+
+  @Public()
+  @Post('reset-password/code')
+  sendResetPasswordCode(
+    @Body(new ValidationPipe({ whitelist: true }))
+    body: SendResetPasswordCodeDto,
+  ) {
+    return this.emailVerificationService.sendResetPasswordCode(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  resetPassword(
+    @Body(new ValidationPipe({ whitelist: true })) body: ResetPasswordDto,
+  ) {
+    return this.authService.resetPassword(body);
   }
 
   @Get('profile')

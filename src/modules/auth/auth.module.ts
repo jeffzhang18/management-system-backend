@@ -10,21 +10,30 @@ import { TokenRevocation } from './entities/token-revocation.entity';
 import { TokenRevocationService } from './token-revocation.service';
 import { EmailVerificationCode } from './entities/email-verification-code.entity';
 import { EmailVerificationService } from './email-verification.service';
+import { Passkey, PasskeyChallenge } from './passkeys/passkey.entity';
+import { PasskeyService } from './passkeys/passkey.service';
+import { PasskeyController } from './passkeys/passkey.controller';
 import { MailService } from './mail.service';
 
 @Module({
   imports: [
     UserModule,
-    TypeOrmModule.forFeature([TokenRevocation, EmailVerificationCode]),
+    TypeOrmModule.forFeature([
+      TokenRevocation,
+      EmailVerificationCode,
+      Passkey,
+      PasskeyChallenge,
+    ]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'dev-secret',
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, PasskeyController],
   providers: [
     AuthService,
+    PasskeyService,
     JwtStrategy,
     TokenRevocationService,
     EmailVerificationService,

@@ -11,14 +11,16 @@ const createRepo = (rows: Row[]) => ({
     rows.push(saved);
     return saved;
   }),
-  findOne: jest.fn(async ({ where }: { where: Row }) =>
-    [...rows]
-      .reverse()
-      .find(
-        (row) =>
-          row.email === where.email &&
-          (!('used_at' in where) || row.used_at === null),
-      ) ?? null,
+  findOne: jest.fn(
+    async ({ where }: { where: Row }) =>
+      [...rows]
+        .reverse()
+        .find(
+          (row) =>
+            row.email === where.email &&
+            row.purpose === where.purpose &&
+            (!('used_at' in where) || row.used_at === null),
+        ) ?? null,
   ),
   count: jest.fn(async () => rows.length),
   delete: jest.fn(async ({ id }: { id: number }) => {
@@ -55,7 +57,10 @@ describe('EmailVerificationService', () => {
     service = new EmailVerificationService(
       createRepo(rows) as any,
       mail as any,
-      { findByEmail: async () => (userExists ? {} : null) } as any,
+      {
+        findByEmail: async () => (userExists ? {} : null),
+        findByEmailInsensitive: async () => (userExists ? {} : null),
+      } as any,
     );
   });
 
@@ -109,5 +114,60 @@ describe('EmailVerificationService', () => {
     mail.sendVerificationCode.mockRejectedValueOnce(new Error('smtp down'));
     await expect(service.sendRegisterCode('a@b.com')).rejects.toThrow();
     expect(rows).toHaveLength(0);
+  });
+  it('sends reset codes only for registered users without disclosing existence', async () => {
+    await expect(service.sendResetPasswordCode('a@b.com')).resolves.toEqual({
+      sent: true,
+    });
+    expect(mail.sendVerificationCode).not.toHaveBeenCalled();
+    userExists = true;
+    await service.sendResetPasswordCode(' A@b.com ');
+    expect(mail.sendVerificationCode).toHaveBeenCalledWith(
+      'a@b.com',
+      sentCode,
+      10,
+      'reset-password',
+    );
+    await expect(service.consume('a@b.com', sentCode)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await service.consume('a@b.com', sentCode, 'reset-password');
+    await expect(
+      service.consume('a@b.com', sentCode, 'reset-password'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does not accept a registration code for a password reset', async () => {
+    await service.sendRegisterCode('a@b.com');
+    await expect(
+      service.consume('a@b.com', sentCode, 'reset-password'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does not fall back to an older unused code after the latest code is consumed', async () => {
+    await service.sendRegisterCode('a@b.com');
+    const oldCode = sentCode;
+    rows[0].created_at = new Date(Date.now() - 61000);
+    await service.sendRegisterCode('a@b.com');
+    await service.consume('a@b.com', sentCode);
+    await expect(service.consume('a@b.com', oldCode)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('enforces hourly limits for password reset codes', async () => {
+    userExists = true;
+    for (let i = 0; i < 5; i++) {
+      rows.forEach((row) => {
+        row.created_at = new Date(Date.now() - 61000);
+      });
+      await service.sendResetPasswordCode('a@b.com');
+    }
+    rows.forEach((row) => {
+      row.created_at = new Date(Date.now() - 61000);
+    });
+    await expect(
+      service.sendResetPasswordCode('a@b.com'),
+    ).rejects.toBeInstanceOf(HttpException);
   });
 });

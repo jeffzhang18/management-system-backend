@@ -2,11 +2,16 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
+import { UserService } from '../../domain/user/user.service';
+import type { AuthTokenPayload } from './token-payload';
 import { TokenRevocationService } from './token-revocation.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly tokenRevocationService: TokenRevocationService) {
+  constructor(
+    private readonly tokenRevocationService: TokenRevocationService,
+    private readonly userService: UserService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_SECRET || 'dev-secret',
@@ -14,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(req: Request, payload: any) {
+  async validate(req: Request, payload: AuthTokenPayload) {
     const authHeader = req.headers.authorization;
     const token =
       typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
@@ -32,6 +37,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const revoked = await this.tokenRevocationService.isTokenRevoked(token);
 
     if (revoked) {
+      throw new UnauthorizedException('Token revoked');
+    }
+
+    const user = await this.userService.findById(Number(payload.sub));
+    if (!user || (payload.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
       throw new UnauthorizedException('Token revoked');
     }
 

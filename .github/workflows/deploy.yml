@@ -48,7 +48,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: docker-compose.yaml
           target: /opt/management-system/backend
-      - name: Pull and restart
+      - name: Pull, migrate and restart
         uses: appleboy/ssh-action@v1.0.3
         env:
           GHCR_USER: ${{ github.actor }}
@@ -64,6 +64,7 @@ jobs:
             cd /opt/management-system/backend
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             IMAGE_TAG=$IMAGE_TAG docker compose pull
+            IMAGE_TAG=$IMAGE_TAG docker compose run --rm --no-deps backend node node_modules/typeorm/cli.js -d dist/src/data-source.js migration:run
             IMAGE_TAG=$IMAGE_TAG docker compose up -d
             docker logout ghcr.io
             docker image prune -f
