@@ -166,7 +166,7 @@ export class PasskeyService {
       timeout: TTL_MS,
     });
     // Let the browser provide and secure the cross-device QR ceremony.
-    if (body.mode === 'phone') options.hints = ['hybrid'];
+    options.hints = body.mode === 'phone' ? ['hybrid'] : ['client-device'];
     const requesterKey = `ip:${createHash('sha256').update(ip).digest('hex')}`;
     const challengeId = await this.saveChallenge(
       'login',
@@ -289,6 +289,11 @@ export class PasskeyService {
   }
 
   async verifyAuthentication(body: VerifyPasskeyLoginDto) {
+    const { user } = await this.verifyAuthenticationIdentity(body);
+    return this.auth.login(user);
+  }
+
+  async verifyAuthenticationIdentity(body: VerifyPasskeyLoginDto) {
     const { origin, rpID } = getPasskeyConfig();
     return this.withChallenge(
       body.challengeId,
@@ -340,7 +345,7 @@ export class PasskeyService {
           backedUp: verification.authenticationInfo.credentialBackedUp,
           lastUsedAt: new Date(),
         });
-        return this.auth.login(user);
+        return { user, passkeyId: key.id };
       },
     );
   }

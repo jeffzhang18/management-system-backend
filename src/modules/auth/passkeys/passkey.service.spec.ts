@@ -1,3 +1,7 @@
+import { QrLoginSession } from './qr-login.entity';
+import { QrLoginService } from './qr-login.service';
+import { QrLoginController } from './qr-login.controller';
+import { AddQrLoginSessions1795305600000 } from '../../../migrations/1795305600000-AddQrLoginSessions';
 import type { INestApplication } from '@nestjs/common';
 import type { Server } from 'node:http';
 import {
@@ -148,6 +152,7 @@ describe('Passkey HTTP flow with real WebAuthn verification', () => {
   let user: User;
   let auth: AuthService;
   let service: PasskeyService;
+  let qr: QrLoginService;
   let email: EmailVerificationService;
   let token: string;
   let code: string;
@@ -170,7 +175,13 @@ describe('Passkey HTTP flow with real WebAuthn verification', () => {
     });
     db = memory.adapters.createTypeormDataSource({
       type: 'postgres',
-      entities: [User, Passkey, PasskeyChallenge, EmailVerificationCode],
+      entities: [
+        User,
+        Passkey,
+        PasskeyChallenge,
+        EmailVerificationCode,
+        QrLoginSession,
+      ],
       synchronize: true,
     }) as DataSource;
     await db.initialize();
@@ -179,6 +190,8 @@ describe('Passkey HTTP flow with real WebAuthn verification', () => {
     await db.query('DROP TABLE sys_passkey');
     const runner = db.createQueryRunner();
     await new AddPasskeys1795222800000().up(runner);
+    await db.query('DROP TABLE sys_qr_login_session');
+    await new AddQrLoginSessions1795305600000().up(runner);
     await runner.release();
     users = new UserService(db.getRepository(User));
     user = await users.createUser(
@@ -217,10 +230,17 @@ describe('Passkey HTTP flow with real WebAuthn verification', () => {
       email,
       db,
     );
+    qr = new QrLoginService(
+      db.getRepository(QrLoginSession),
+      service,
+      auth,
+      db,
+    );
     const module = await Test.createTestingModule({
-      controllers: [PasskeyController],
+      controllers: [PasskeyController, QrLoginController],
       providers: [
         { provide: PasskeyService, useValue: service },
+        { provide: QrLoginService, useValue: qr },
         { provide: APP_GUARD, useClass: JwtAuthGuard },
         {
           provide: ApiCallLogService,
@@ -555,5 +575,119 @@ describe('Passkey HTTP flow with real WebAuthn verification', () => {
       .execute();
     await service.cleanChallenges();
     expect(await db.getRepository(PasskeyChallenge).count()).toBe(0);
+  });
+  function scanTicket(session: Awaited<ReturnType<QrLoginService['create']>>) {
+    const params = new URLSearchParams(new URL(session.qrUrl).hash.slice(1));
+    return { sessionId: session.sessionId, token: params.get('token')! };
+  }
+  function desktopTicket(
+    session: Awaited<ReturnType<QrLoginService['create']>>,
+  ) {
+    return { sessionId: session.sessionId, token: session.desktopToken };
+  }
+  async function approvedQr() {
+    const { device, userHandle } = await register();
+    const session = await qr.create('desktop');
+    const scan = scanTicket(session);
+    const options = await qr.options(scan, 'phone');
+    await qr.approve({
+      ...scan,
+      challengeId: options.challengeId,
+      response: device.assertion(options.options.challenge, userHandle),
+    });
+    return { session, scan };
+  }
+
+  it('shows a separate QR URL and exchanges a real phone passkey approval only on the original desktop', async () => {
+    const { device, userHandle } = await register();
+    const session = await qr.create('desktop');
+    const scan = scanTicket(session);
+    const desktop = desktopTicket(session);
+    expect(session.qrUrl).toContain('/auth/qr-confirm#');
+    expect(new URL(session.qrUrl).search).toBe('');
+    expect(scan.token).not.toBe(session.desktopToken);
+    expect(session.qrUrl).not.toContain(session.desktopToken);
+    await expect(qr.exchange(desktop)).rejects.toThrow();
+    await expect(qr.status(scan)).rejects.toThrow();
+    await expect(qr.options(desktop, 'phone')).rejects.toThrow();
+    const info = await qr.status(scan, 'scan');
+    expect(info.verificationCode).toBe(session.verificationCode);
+    const ceremony = await qr.options(scan, 'phone');
+    expect(ceremony.options.hints).toEqual(['client-device']);
+    const response = device.assertion(ceremony.options.challenge, userHandle);
+    const approval = await request(app.getHttpServer() as Server)
+      .post('/auth/qr-login/approve')
+      .send({ ...scan, challengeId: ceremony.challengeId, response })
+      .expect(201);
+    expect(approval.body).toEqual({ approved: true });
+    expect((await qr.status(desktop)).state).toBe('approved');
+    await expect(qr.exchange(scan)).rejects.toThrow();
+    const payload = await qr.exchange(desktop);
+    expect(payload.user.email).toBe(user.email);
+    await expect(
+      auth.refreshToken(payload.refreshToken),
+    ).resolves.toHaveProperty('accessToken');
+    await expect(qr.exchange(desktop)).rejects.toThrow();
+    expect((await qr.status(desktop)).state).toBe('consumed');
+    const stored = await db
+      .getRepository(QrLoginSession)
+      .findOneByOrFail({ id: session.sessionId });
+    expect(stored.scanTokenHash).not.toBe(scan.token);
+    expect(stored.desktopTokenHash).not.toBe(session.desktopToken);
+  });
+
+  it('does not accept a valid passkey assertion from an unrelated challenge', async () => {
+    const { device, userHandle } = await register();
+    const session = await qr.create('desktop');
+    const scan = scanTicket(session);
+    await qr.options(scan, 'phone');
+    const unrelated = await service.authenticationOptions('other-login', {});
+    await expect(
+      qr.approve({
+        ...scan,
+        challengeId: unrelated.challengeId,
+        response: device.assertion(unrelated.options.challenge, userHandle),
+      }),
+    ).rejects.toThrow();
+    expect((await qr.status(desktopTicket(session))).state).toBe('waiting');
+    await expect(qr.exchange(desktopTicket(session))).rejects.toThrow();
+  });
+
+  it('allows cancelling or expiring a QR session without issuing a login', async () => {
+    const session = await qr.create('desktop');
+    await qr.cancel(scanTicket(session), 'scan');
+    expect((await qr.status(desktopTicket(session))).state).toBe('cancelled');
+    await expect(qr.options(scanTicket(session), 'phone')).rejects.toThrow();
+    await expect(qr.exchange(desktopTicket(session))).rejects.toThrow();
+    const expired = await qr.create('desktop');
+    await db
+      .getRepository(QrLoginSession)
+      .update(expired.sessionId, { expiresAt: new Date(Date.now() - 1) });
+    expect((await qr.status(desktopTicket(expired))).state).toBe('expired');
+    await expect(qr.options(scanTicket(expired), 'phone')).rejects.toThrow();
+  });
+
+  it('refuses to redeem a passkey approval after password reset or credential deletion', async () => {
+    const { session } = await approvedQr();
+    await db.getRepository(User).increment({ id: user.id }, 'tokenVersion', 1);
+    await expect(qr.exchange(desktopTicket(session))).rejects.toThrow();
+    await db.getRepository(User).update(user.id, { tokenVersion: 0 });
+    const key = await db
+      .getRepository(Passkey)
+      .findOneByOrFail({ userId: user.id });
+    await service.remove(user.id, key.id);
+    await expect(qr.exchange(desktopTicket(session))).rejects.toThrow();
+  });
+
+  it('validates public QR requests and limits session creation', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/auth/qr-login/status')
+      .send({ sessionId: 'invalid', token: 'short' })
+      .expect(400);
+    for (let i = 0; i < 10; i++) await qr.create('same-ip');
+    await expect(qr.create('same-ip')).rejects.toThrow(
+      'Too many QR login requests',
+    );
+    await expect(qr.create('different-ip')).resolves.toHaveProperty('qrUrl');
   });
 });

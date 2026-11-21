@@ -13,6 +13,9 @@ import { EmailVerificationService } from './email-verification.service';
 import { Passkey, PasskeyChallenge } from './passkeys/passkey.entity';
 import { PasskeyService } from './passkeys/passkey.service';
 import { PasskeyController } from './passkeys/passkey.controller';
+import { QrLoginSession } from './passkeys/qr-login.entity';
+import { QrLoginService } from './passkeys/qr-login.service';
+import { QrLoginController } from './passkeys/qr-login.controller';
 import { MailService } from './mail.service';
 
 @Module({
@@ -23,6 +26,7 @@ import { MailService } from './mail.service';
       EmailVerificationCode,
       Passkey,
       PasskeyChallenge,
+      QrLoginSession,
     ]),
     PassportModule,
     JwtModule.register({
@@ -30,10 +34,11 @@ import { MailService } from './mail.service';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController, PasskeyController],
+  controllers: [AuthController, PasskeyController, QrLoginController],
   providers: [
     AuthService,
     PasskeyService,
+    QrLoginService,
     JwtStrategy,
     TokenRevocationService,
     EmailVerificationService,

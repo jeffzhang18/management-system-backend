@@ -42,10 +42,10 @@ pm2 logs management-backend --lines 50
 
 1. 先用密码或邮箱验证码登录，进入“账号设置 → 安全”。
 2. 在“通行密钥”中填写名称，获取账号邮箱验证码，选择“此设备或密码管理器”或“其他手机”，完成系统验证后绑定。
-3. 退出登录后，可使用“面容 / 指纹登录”。电脑端也可进入“二维码登录”，点击按钮，在系统对话框中选择手机/其他设备，扫描系统二维码并在手机上完成验证。
+3. 退出登录后，可使用“面容 / 指纹登录”。电脑端也可进入“二维码登录”，直接扫描网页显示的一次性二维码，在手机网页核对数字，再用手机上的通行密钥验证并确认电脑登录。
 4. 可在安全页查看最近使用时间并删除丢失设备的通行密钥。删除后该凭证无法再次登录；已签发的登录凭证仍按现有会话规则处理。
 
-建议首次在手机浏览器登录并绑定通行密钥。跨设备二维码由 WebAuthn 系统窗口生成，页面不会自行生成普通 URL 二维码替代。浏览器可能需要用户选择“其他设备”才显示二维码；`hybrid` 提示无法强制所有浏览器展示同一界面。面容和指纹不可由网站强制指定，系统也可能要求设备 PIN。
+建议首次在手机浏览器登录并绑定通行密钥。本机登录使用 `client-device` 提示并要求用户验证；具体面容、指纹或设备 PIN 由系统决定。二维码登录使用独立网页会话，不在电脑上调用 WebAuthn，因此不会先打开电脑的 Touch ID 窗口。手机扫码进入独立确认页后，才在手机上调用 WebAuthn 验证身份。
 
 ### 部署
 
@@ -61,7 +61,7 @@ WEBAUTHN_RP_NAME=AGGREGATE
 
 `WEBAUTHN_RP_ID` 是前端域名，不含协议、端口或路径；`WEBAUTHN_ORIGIN` 是准确的前端来源，包含协议及实际端口，不含路径和末尾斜杠。服务端不会根据请求 Host 动态信任域名。更改 RP ID 通常需要重新绑定通行密钥。生产未配置时功能关闭，密码/邮箱登录继续可用。
 
-本机开发默认 `localhost` / `http://localhost:3001`。手机跨设备测试需使用可访问的 HTTPS 正式或测试域名；手机不能用电脑的 localhost 地址。两台设备需联网并开启蓝牙；系统、浏览器、凭证提供程序必须支持跨设备通行密钥，安卓不同厂商需真机测试。无需把手机和电脑接入同一 Wi-Fi。保留邮箱验证码作为不支持环境的登录方式。
+本机开发默认 `localhost` / `http://localhost:3001`。手机跨设备测试需使用可访问的 HTTPS 正式或测试域名；手机不能用电脑的 localhost 地址。网页扫码登录需要两台设备联网，不要求蓝牙或同一 Wi-Fi；手机浏览器和凭证提供程序需支持本站的通行密钥。绑定时如选择系统的“其他手机”方式，系统跨设备通行密钥流程可能仍需要蓝牙。保留邮箱验证码作为不支持环境的登录方式。
 
 ### 接口与验证
 
@@ -75,3 +75,15 @@ WEBAUTHN_RP_NAME=AGGREGATE
 自动测试使用 ES256 密钥生成真实 WebAuthn attestation/assertion，覆盖真实验签、错误域名、伪造签名、缺少用户验证、重放、凭证撤销、账号隔离与数据库迁移。它不替代 iPhone / 安卓真机的面容、指纹和蓝牙扫码验证。
 
 参考：[SimpleWebAuthn 服务端](https://simplewebauthn.dev/docs/packages/server)、[浏览器端](https://simplewebauthn.dev/docs/packages/browser)、[Google 跨设备通行密钥说明](https://developers.google.com/identity/passkeys/use-cases)。
+
+
+### 网页二维码登录的会话边界
+
+新增 `sys_qr_login_session` 表，部署前执行 `pnpm migration:run`（自动部署已包含此步骤）。
+
+- 电脑创建二维码后轮询状态；手机扫码进入 `/auth/qr-confirm`，先核对两端数字，再点击验证并确认登录电脑。
+- 扫描凭证位于 URL fragment，确认页读取后清除地址中的 fragment。电脑兑换凭证只保留在发起页面内存中，不会出现在二维码中。
+- 手机提交的 WebAuthn challenge 必须属于该扫码会话。手机验证成功只批准会话，不向手机返回电脑的 access/refresh token。
+- 仅原电脑可以一次性兑换登录结果；到期、取消、凭证被删除或密码重置改变 token 版本后不能兑换。
+- 二维码有效期 5 分钟；刷新二维码或离开二维码页会取消旧会话。此登录通道与本机通行密钥登录完全分开。
+- 公开接口前缀 `/api/auth/qr-login`：`sessions`、`status`、`info`、`options`、`approve`、`exchange`、`cancel`、`reject`，全部为 POST。`info/options/approve/reject` 需要扫描凭证，`status/exchange/cancel` 需要电脑凭证。
