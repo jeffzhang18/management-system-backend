@@ -1,12 +1,11 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddEmailVerificationCodes1794614400000
-  implements MigrationInterface
-{
+export class AddEmailVerificationCodes1794614400000 implements MigrationInterface {
   name = 'AddEmailVerificationCodes1794614400000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
+    if (!(await queryRunner.hasTable('sys_email_verification_code'))) {
+      await queryRunner.query(`
       CREATE TABLE sys_email_verification_code (
         id SERIAL PRIMARY KEY,
         email VARCHAR(320) NOT NULL,
@@ -17,8 +16,14 @@ export class AddEmailVerificationCodes1794614400000
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    }
+    // Older deployments used synchronize before recording this migration.
+    // Validate the legacy columns before adopting the existing table.
     await queryRunner.query(
-      'CREATE INDEX idx_sys_email_verification_code_email ON sys_email_verification_code (email)',
+      'SELECT id, email, code_hash, attempts, expires_at, used_at, created_at FROM sys_email_verification_code LIMIT 0',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS idx_sys_email_verification_code_email ON sys_email_verification_code (email)',
     );
   }
 
