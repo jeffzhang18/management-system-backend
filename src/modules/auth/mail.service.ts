@@ -4,6 +4,11 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { VerificationPurpose } from './email-verification.service';
+import {
+  DEFAULT_LOCALE,
+  getMessages,
+  type Locale,
+} from '../../common/i18n/locale';
 import { createTransport, type Transporter } from 'nodemailer';
 
 @Injectable()
@@ -37,22 +42,20 @@ export class MailService {
     code: string,
     ttlMinutes: number,
     purpose: VerificationPurpose = 'register',
+    locale: Locale = DEFAULT_LOCALE,
   ) {
-    const labels: Record<VerificationPurpose, string> = {
-      register: '注册',
-      'reset-password': '重置密码',
-      login: '登录',
-      'passkey-register': '绑定通行密钥',
-    };
-    const label = labels[purpose];
+    const messages = getMessages(locale).mail.verification;
+    const label = messages.purposes[purpose];
+    const intro = messages.intro(label);
+    const validity = messages.validity(ttlMinutes);
     const transporter = this.getTransporter();
     try {
       await transporter.sendMail({
         from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to,
-        subject: `${label}验证码`,
-        text: `您的${label}验证码是 ${code}，${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。`,
-        html: `<p>您的${label}验证码是 <b style="font-size:20px;letter-spacing:4px">${code}</b></p><p>${ttlMinutes} 分钟内有效。如非本人操作，请忽略此邮件。</p>`,
+        subject: messages.subject(label),
+        text: `${intro} ${code}. ${validity} ${messages.ignore}`,
+        html: `<p>${intro} <b style="font-size:20px;letter-spacing:4px">${code}</b></p><p>${validity} ${messages.ignore}</p>`,
       });
     } catch (error) {
       this.logger.error(

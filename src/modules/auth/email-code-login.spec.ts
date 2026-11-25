@@ -113,6 +113,7 @@ describe('Email code login with isolated PostgreSQL adapter', () => {
       code,
       10,
       'login',
+      'en-US',
     );
     const response = await request(app.getHttpServer() as Server)
       .post('/auth/login/email')

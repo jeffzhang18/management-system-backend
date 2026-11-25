@@ -26,6 +26,7 @@ import { User } from '../../../domain/user/user.entity';
 import { UserService } from '../../../domain/user/user.service';
 import { AuthService } from '../auth.service';
 import { EmailVerificationService } from '../email-verification.service';
+import type { Locale } from '../../../common/i18n/locale';
 import { getPasskeyConfig } from './passkey-config';
 import { Passkey, PasskeyChallenge } from './passkey.entity';
 import {
@@ -82,11 +83,11 @@ export class PasskeyService {
     return { deleted: true };
   }
 
-  async sendRegistrationCode(userId: number) {
+  async sendRegistrationCode(userId: number, locale?: Locale) {
     getPasskeyConfig();
     const user = await this.users.findById(userId);
     if (!user) throw invalid();
-    return this.email.sendPasskeyRegistrationCode(user.email);
+    return this.email.sendPasskeyRegistrationCode(user.email, locale);
   }
 
   private async saveChallenge(

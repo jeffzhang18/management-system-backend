@@ -127,6 +127,7 @@ describe('EmailVerificationService', () => {
       sentCode,
       10,
       'reset-password',
+      'en-US',
     );
     await expect(service.consume('a@b.com', sentCode)).rejects.toBeInstanceOf(
       BadRequestException,

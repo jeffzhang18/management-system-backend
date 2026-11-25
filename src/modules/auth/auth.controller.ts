@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   Get,
+  Headers,
   Req,
   UnauthorizedException,
   ValidationPipe,
@@ -19,6 +20,7 @@ import { SendResetPasswordCodeDto } from './dto/send-reset-password-code.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SendRegisterCodeDto } from './dto/send-register-code.dto';
 import { EmailVerificationService } from './email-verification.service';
+import { resolveLocale } from '../../common/i18n/locale';
 import { RevokeRefreshTokenDto } from './dto/revoke-refresh-token.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -45,8 +47,12 @@ export class AuthController {
   @Post('login/email/code')
   sendLoginCode(
     @Body(new ValidationPipe({ whitelist: true })) body: SendLoginCodeDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.emailVerificationService.sendLoginCode(body.email);
+    return this.emailVerificationService.sendLoginCode(
+      body.email,
+      resolveLocale(acceptLanguage),
+    );
   }
 
   @Public()
@@ -59,8 +65,14 @@ export class AuthController {
 
   @Public()
   @Post('register/code')
-  sendRegisterCode(@Body() body: SendRegisterCodeDto) {
-    return this.emailVerificationService.sendRegisterCode(body.email);
+  sendRegisterCode(
+    @Body() body: SendRegisterCodeDto,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.emailVerificationService.sendRegisterCode(
+      body.email,
+      resolveLocale(acceptLanguage),
+    );
   }
 
   @Public()
@@ -83,8 +95,12 @@ export class AuthController {
   sendResetPasswordCode(
     @Body(new ValidationPipe({ whitelist: true }))
     body: SendResetPasswordCodeDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.emailVerificationService.sendResetPasswordCode(body.email);
+    return this.emailVerificationService.sendResetPasswordCode(
+      body.email,
+      resolveLocale(acceptLanguage),
+    );
   }
 
   @Public()

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Post,
@@ -15,6 +16,7 @@ import type { Request } from 'express';
 import { Public } from '../../../common/decorators/public.decorator';
 import { User } from '../../../common/decorators/user.decorator';
 import { PasskeyService } from './passkey.service';
+import { resolveLocale } from '../../../common/i18n/locale';
 import {
   PasskeyOptionsDto,
   VerifyPasskeyLoginDto,
@@ -55,8 +57,14 @@ export class PasskeyController {
   }
 
   @Post('register/code')
-  sendCode(@User('userId') userId: number) {
-    return this.passkeys.sendRegistrationCode(Number(userId));
+  sendCode(
+    @User('userId') userId: number,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.passkeys.sendRegistrationCode(
+      Number(userId),
+      resolveLocale(acceptLanguage),
+    );
   }
 
   @Post('register/options')

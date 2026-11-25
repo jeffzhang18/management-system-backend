@@ -10,6 +10,7 @@ import { EntityManager, IsNull, MoreThan, Repository } from 'typeorm';
 import { UserService } from '../../domain/user/user.service';
 import { EmailVerificationCode } from './entities/email-verification-code.entity';
 import { MailService } from './mail.service';
+import { DEFAULT_LOCALE, type Locale } from '../../common/i18n/locale';
 
 export type VerificationPurpose =
   | 'register'
@@ -42,23 +43,27 @@ export class EmailVerificationService {
       .digest('hex');
   }
 
-  sendRegisterCode(rawEmail: string) {
-    return this.sendCode(rawEmail, 'register');
+  sendRegisterCode(rawEmail: string, locale?: Locale) {
+    return this.sendCode(rawEmail, 'register', locale);
   }
 
-  sendPasskeyRegistrationCode(rawEmail: string) {
-    return this.sendCode(rawEmail, 'passkey-register');
+  sendPasskeyRegistrationCode(rawEmail: string, locale?: Locale) {
+    return this.sendCode(rawEmail, 'passkey-register', locale);
   }
 
-  sendLoginCode(rawEmail: string) {
-    return this.sendCode(rawEmail, 'login');
+  sendLoginCode(rawEmail: string, locale?: Locale) {
+    return this.sendCode(rawEmail, 'login', locale);
   }
 
-  sendResetPasswordCode(rawEmail: string) {
-    return this.sendCode(rawEmail, 'reset-password');
+  sendResetPasswordCode(rawEmail: string, locale?: Locale) {
+    return this.sendCode(rawEmail, 'reset-password', locale);
   }
 
-  private async sendCode(rawEmail: string, purpose: VerificationPurpose) {
+  private async sendCode(
+    rawEmail: string,
+    purpose: VerificationPurpose,
+    locale: Locale = DEFAULT_LOCALE,
+  ) {
     const email = this.normalize(rawEmail);
     const now = Date.now();
 
@@ -113,6 +118,7 @@ export class EmailVerificationService {
         code,
         CODE_TTL_MINUTES,
         purpose,
+        locale,
       );
     } catch (error) {
       await this.repo.delete({ id: record.id });
